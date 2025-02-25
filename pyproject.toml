@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "pantograph"
-version = "0.2.25"
+version = "0.3.0-rc.1"
 description = "A machine-to-machine interaction system for Lean"
 authors = ["Leni Aniva <v@leni.sh>"]
 license = "Apache-2.0"
