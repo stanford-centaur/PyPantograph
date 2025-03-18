@@ -49,17 +49,18 @@ class Server:
     Asynchronous and synchronous versions are provided for each function.
     """
 
-    def __init__(self,
-                 imports: List[str]=["Init"],
-                 project_path: Optional[str]=None,
-                 lean_path: Optional[str]=None,
-                 # Options for executing the REPL.
-                 # Set `{ "automaticMode" : False }` to handle resumption by yourself.
-                 options: Dict[str, Any]={},
-                 core_options: List[str]=DEFAULT_CORE_OPTIONS,
-                 timeout: int=30,
-                 maxread: int=1000000,
-                 _sync_init: bool=True):
+    def __init__(
+            self,
+            imports: List[str]=["Init"],
+            project_path: Optional[str]=None,
+            lean_path: Optional[str]=None,
+            # Options for executing the REPL.
+            # Set `{ "automaticMode" : False }` to handle resumption by yourself.
+            options: Dict[str, Any]={},
+            core_options: List[str]=DEFAULT_CORE_OPTIONS,
+            timeout: int=30,
+            maxread: int=1000000,
+            _sync_init: bool=True):
         """
         timeout: Amount of time to wait for execution (in seconds)
         maxread: Maximum number of characters to read (especially important for large proofs and catalogs)
@@ -84,17 +85,18 @@ class Server:
         self.to_remove_goal_states = []
 
     @classmethod
-    async def create(cls,
-                 imports: List[str]=["Init"],
-                 project_path: Optional[str]=None,
-                 lean_path: Optional[str]=None,
-                 # Options for executing the REPL.
-                 # Set `{ "automaticMode" : False }` to handle resumption by yourself.
-                 options: Dict[str, Any]={},
-                 core_options: List[str]=DEFAULT_CORE_OPTIONS,
-                 timeout: int=120,
-                 maxread: int=1000000,
-                 start:bool=True) -> 'Server':
+    async def create(
+            cls,
+            imports: List[str]=["Init"],
+            project_path: Optional[str]=None,
+            lean_path: Optional[str]=None,
+            # Options for executing the REPL.
+            # Set `{ "automaticMode" : False }` to handle resumption by yourself.
+            options: Dict[str, Any]={},
+            core_options: List[str]=DEFAULT_CORE_OPTIONS,
+            timeout: int=120,
+            maxread: int=1000000,
+            start:bool=True) -> 'Server':
         """
         timeout: Amount of time to wait for execution (in seconds)
         maxread: Maximum number of characters to read (especially important for large proofs and catalogs)
@@ -249,6 +251,21 @@ class Server:
 
     goal_start = to_sync(goal_start_async)
 
+    async def goal_root_async(self, state: GoalState) -> Optional[Expr]:
+        """
+        Print the root expression of a goal state
+        """
+        args = {"stateId": state.state_id, "rootExpr": True}
+        result = await self.run_async('goal.print', args)
+        if "error" in result:
+            raise ServerError(result)
+        root = result.get('root')
+        if root is None:
+            return None
+        return parse_expr(root)
+
+    goal_root = to_sync(goal_root_async)
+
     async def goal_tactic_async(self, state: GoalState, goal_id: int, tactic: Tactic) -> GoalState:
         """
         Execute a tactic on `goal_id` of `state`
@@ -321,6 +338,8 @@ class Server:
             'fileName': str(file_name),
             'invocations': True,
             "sorrys": False,
+            "readHeader": True,
+            "inheritEnv": False,
             "newConstants": False,
             "typeErrorsAsGoals": False,
         })
@@ -342,6 +361,8 @@ class Server:
             'invocations': False,
             "sorrys": True,
             "newConstants": False,
+            "readHeader": False,
+            "inheritEnv": False,
             "typeErrorsAsGoals": False,
         })
         if "error" in result:
@@ -354,6 +375,25 @@ class Server:
         return units
 
     load_sorry = to_sync(load_sorry_async)
+
+    async def load_header(self, header: str):
+        """
+        Loads the environment from a header. Set `imports` to `[]` during
+        server creation to use this function.
+        """
+        result = await self.run_async('frontend.process', {
+            'file': header,
+            'invocations': False,
+            "sorrys": False,
+            "newConstants": False,
+            "readHeader": True,
+            "inheritEnv": True,
+            "typeErrorsAsGoals": False,
+        })
+        if "error" in result:
+            raise ServerError(result)
+
+    load_header = to_sync(load_header)
 
     async def env_add_async(self, name: str, t: Expr, v: Expr, is_theorem: bool = True):
         """
@@ -482,7 +522,7 @@ class TestServer(unittest.TestCase):
         """
         NOTE: Update this after upstream updates.
         """
-        self.assertEqual(get_version(), "0.2.25")
+        self.assertEqual(get_version(), "0.3.0-rc.1")
 
     def test_server_init_del(self):
         import warnings
@@ -527,6 +567,15 @@ class TestServer(unittest.TestCase):
         self.assertEqual(len(server.to_remove_goal_states), 1)
         server.gc()
         self.assertEqual(len(server.to_remove_goal_states), 0)
+
+    def test_goal_root(self):
+        server = Server()
+        state0 = server.goal_start("forall (p: Prop), p -> p")
+        e = server.goal_root(state0)
+        self.assertEqual(e, None)
+        state1 = server.goal_tactic(state0, goal_id=0, tactic="exact fun z p => p")
+        e = server.goal_root(state1)
+        self.assertEqual(e, "fun z p => p")
 
     def test_automatic_mode(self):
         server = Server()
@@ -673,7 +722,6 @@ class TestServer(unittest.TestCase):
                 target="p → p",
             ),
         ])
-
 
     def test_env_add_inspect(self):
         server = Server()
