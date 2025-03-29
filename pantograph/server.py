@@ -395,7 +395,7 @@ class Server:
 
     load_header = to_sync(load_header)
 
-    async def env_add_async(self, name: str, t: Expr, v: Expr, is_theorem: bool = True):
+    async def env_add_async(self, name: str, levels: list[str], t: Expr, v: Expr, is_theorem: bool = True):
         """
         Adds a definition to the environment.
 
@@ -404,6 +404,7 @@ class Server:
         """
         result = await self.run_async('env.add', {
             "name": name,
+            "levels": levels,
             "type": t,
             "value": v,
             "isTheorem": is_theorem,
@@ -522,7 +523,7 @@ class TestServer(unittest.TestCase):
         """
         NOTE: Update this after upstream updates.
         """
-        self.assertEqual(get_version(), "0.3.0-rc.1")
+        self.assertEqual(get_version(), "0.3.0")
 
     def test_server_init_del(self):
         import warnings
@@ -693,6 +694,14 @@ class TestServer(unittest.TestCase):
         state4 = server.goal_tactic(state3, goal_id=0, tactic="rw [Nat.add_assoc]")
         self.assertTrue(state4.is_solved)
 
+    def test_load_header(self):
+        server = Server(imports=[])
+        server.load_header("import Init\nopen Nat")
+        state0 = server.goal_start("forall (n : Nat), n + 1 = n.succ")
+        state1 = server.goal_tactic(state0, goal_id=0, tactic="intro")
+        state2 = server.goal_tactic(state1, goal_id=0, tactic="apply add_one")
+        self.assertTrue(state2.is_solved)
+
     def test_load_sorry(self):
         server = Server()
         unit, = server.load_sorry("example (p: Prop): p → p := sorry")
@@ -727,6 +736,7 @@ class TestServer(unittest.TestCase):
         server = Server()
         server.env_add(
             name="mystery",
+            levels=[],
             t="forall (n: Nat), Nat",
             v="fun (n: Nat) => n + 1",
             is_theorem=False,
