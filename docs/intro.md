@@ -12,6 +12,16 @@ features are:
 6. Extraction of tactic training data
 7. Support for drafting
 
+## Name
+
+The name Pantograph is a pun. It means two things
+- A pantograph is an instrument for copying down writing. As an agent explores
+  the vast proof search space, Pantograph records the current state to ensure
+  the proof is sound.
+- A pantograph is also an equipment for an electric train. It supplies power to
+  a locomotive. In comparison the (relatively) simple Pantograph software powers
+  theorem proving projects.
+
 ## Design Rationale
 
 The Lean 4 interface is not conducive to search. Readers familiar with Coq may

@@ -1,12 +1,5 @@
 # Examples
 
-For a quick introduction of the API, fire up Jupyter and open `all.ipynb`. (Did
-you remember to `poetry install`?)
-
-``` sh
-poetry run jupyter notebook
-```
-
 This example showcases how to bind library dependencies and execute the `Aesop`
 tactic in Lean. First build the example project:
 ``` sh
@@ -19,7 +12,6 @@ project root:
 ``` sh
 poetry run examples/aesop.py
 poetry run examples/sketch.py
-poetry run examples/data.py
 ```
 
 Warning: If you make modifications to any Lean files, you must re-run `lake
@@ -28,6 +20,5 @@ dependencies in `lakefile.lean` and `lean-toolchain`) **must match exactly**
 with the version in `src/`!
 
 * `aesop.py`: Example of how to use the `aesop` tactic
-* `data.py`: Example of loading training data
 * `sketch.py`: Example of loading a sketch
 

@@ -58,7 +58,7 @@ class Server:
             # Set `{ "automaticMode" : False }` to handle resumption by yourself.
             options: Dict[str, Any]={},
             core_options: List[str]=DEFAULT_CORE_OPTIONS,
-            timeout: int=30,
+            timeout: int=60,
             maxread: int=1000000,
             _sync_init: bool=True):
         """
@@ -163,7 +163,7 @@ class Server:
         self.proc.setecho(False) # Do not send any command before this.
         try:
             ready = await self.proc.readline_async() # Reads the "ready."
-            assert ready.rstrip() == "ready.", f"Server failed to emit ready signal: {ready}; Project Lean version must match Pantograph's Lean version exactly or, it maybe needs to be rebuilt"
+            assert ready.rstrip() == "ready.", f"Server failed to emit ready signal: {ready}; This could be caused by Lean version mismatch between the project and Pantograph or insufficient timeout."
         except pexpect.exceptions.TIMEOUT as exc:
             raise RuntimeError("Server failed to emit ready signal in time") from exc
 
