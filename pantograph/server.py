@@ -49,17 +49,18 @@ class Server:
     Asynchronous and synchronous versions are provided for each function.
     """
 
-    def __init__(self,
-                 imports: List[str]=["Init"],
-                 project_path: Optional[str]=None,
-                 lean_path: Optional[str]=None,
-                 # Options for executing the REPL.
-                 # Set `{ "automaticMode" : False }` to handle resumption by yourself.
-                 options: Dict[str, Any]={},
-                 core_options: List[str]=DEFAULT_CORE_OPTIONS,
-                 timeout: int=30,
-                 maxread: int=1000000,
-                 _sync_init: bool=True):
+    def __init__(
+            self,
+            imports: List[str]=["Init"],
+            project_path: Optional[str]=None,
+            lean_path: Optional[str]=None,
+            # Options for executing the REPL.
+            # Set `{ "automaticMode" : False }` to handle resumption by yourself.
+            options: Dict[str, Any]={},
+            core_options: List[str]=DEFAULT_CORE_OPTIONS,
+            timeout: int=60,
+            maxread: int=1000000,
+            _sync_init: bool=True):
         """
         timeout: Amount of time to wait for execution (in seconds)
         maxread: Maximum number of characters to read (especially important for large proofs and catalogs)
@@ -84,17 +85,18 @@ class Server:
         self.to_remove_goal_states = []
 
     @classmethod
-    async def create(cls,
-                 imports: List[str]=["Init"],
-                 project_path: Optional[str]=None,
-                 lean_path: Optional[str]=None,
-                 # Options for executing the REPL.
-                 # Set `{ "automaticMode" : False }` to handle resumption by yourself.
-                 options: Dict[str, Any]={},
-                 core_options: List[str]=DEFAULT_CORE_OPTIONS,
-                 timeout: int=120,
-                 maxread: int=1000000,
-                 start:bool=True) -> 'Server':
+    async def create(
+            cls,
+            imports: List[str]=["Init"],
+            project_path: Optional[str]=None,
+            lean_path: Optional[str]=None,
+            # Options for executing the REPL.
+            # Set `{ "automaticMode" : False }` to handle resumption by yourself.
+            options: Dict[str, Any]={},
+            core_options: List[str]=DEFAULT_CORE_OPTIONS,
+            timeout: int=120,
+            maxread: int=1000000,
+            start:bool=True) -> 'Server':
         """
         timeout: Amount of time to wait for execution (in seconds)
         maxread: Maximum number of characters to read (especially important for large proofs and catalogs)
@@ -161,7 +163,7 @@ class Server:
         self.proc.setecho(False) # Do not send any command before this.
         try:
             ready = await self.proc.readline_async() # Reads the "ready."
-            assert ready.rstrip() == "ready.", f"Server failed to emit ready signal: {ready}; Project Lean version must match Pantograph's Lean version exactly or, it maybe needs to be rebuilt"
+            assert ready.rstrip() == "ready.", f"Server failed to emit ready signal: {ready}; This could be caused by Lean version mismatch between the project and Pantograph or insufficient timeout."
         except pexpect.exceptions.TIMEOUT as exc:
             raise RuntimeError("Server failed to emit ready signal in time") from exc
 
@@ -249,6 +251,21 @@ class Server:
 
     goal_start = to_sync(goal_start_async)
 
+    async def goal_root_async(self, state: GoalState) -> Optional[Expr]:
+        """
+        Print the root expression of a goal state
+        """
+        args = {"stateId": state.state_id, "rootExpr": True}
+        result = await self.run_async('goal.print', args)
+        if "error" in result:
+            raise ServerError(result)
+        root = result.get('root')
+        if root is None:
+            return None
+        return parse_expr(root)
+
+    goal_root = to_sync(goal_root_async)
+
     async def goal_tactic_async(self, state: GoalState, goal_id: int, tactic: Tactic) -> GoalState:
         """
         Execute a tactic on `goal_id` of `state`
@@ -321,6 +338,8 @@ class Server:
             'fileName': str(file_name),
             'invocations': True,
             "sorrys": False,
+            "readHeader": True,
+            "inheritEnv": False,
             "newConstants": False,
             "typeErrorsAsGoals": False,
         })
@@ -342,6 +361,8 @@ class Server:
             'invocations': False,
             "sorrys": True,
             "newConstants": False,
+            "readHeader": False,
+            "inheritEnv": False,
             "typeErrorsAsGoals": False,
         })
         if "error" in result:
@@ -355,7 +376,26 @@ class Server:
 
     load_sorry = to_sync(load_sorry_async)
 
-    async def env_add_async(self, name: str, t: Expr, v: Expr, is_theorem: bool = True):
+    async def load_header(self, header: str):
+        """
+        Loads the environment from a header. Set `imports` to `[]` during
+        server creation to use this function.
+        """
+        result = await self.run_async('frontend.process', {
+            'file': header,
+            'invocations': False,
+            "sorrys": False,
+            "newConstants": False,
+            "readHeader": True,
+            "inheritEnv": True,
+            "typeErrorsAsGoals": False,
+        })
+        if "error" in result:
+            raise ServerError(result)
+
+    load_header = to_sync(load_header)
+
+    async def env_add_async(self, name: str, levels: list[str], t: Expr, v: Expr, is_theorem: bool = True):
         """
         Adds a definition to the environment.
 
@@ -364,6 +404,7 @@ class Server:
         """
         result = await self.run_async('env.add', {
             "name": name,
+            "levels": levels,
             "type": t,
             "value": v,
             "isTheorem": is_theorem,
@@ -482,7 +523,7 @@ class TestServer(unittest.TestCase):
         """
         NOTE: Update this after upstream updates.
         """
-        self.assertEqual(get_version(), "0.2.25")
+        self.assertEqual(get_version(), "0.3.0")
 
     def test_server_init_del(self):
         import warnings
@@ -527,6 +568,15 @@ class TestServer(unittest.TestCase):
         self.assertEqual(len(server.to_remove_goal_states), 1)
         server.gc()
         self.assertEqual(len(server.to_remove_goal_states), 0)
+
+    def test_goal_root(self):
+        server = Server()
+        state0 = server.goal_start("forall (p: Prop), p -> p")
+        e = server.goal_root(state0)
+        self.assertEqual(e, None)
+        state1 = server.goal_tactic(state0, goal_id=0, tactic="exact fun z p => p")
+        e = server.goal_root(state1)
+        self.assertEqual(e, "fun z p => p")
 
     def test_automatic_mode(self):
         server = Server()
@@ -644,6 +694,14 @@ class TestServer(unittest.TestCase):
         state4 = server.goal_tactic(state3, goal_id=0, tactic="rw [Nat.add_assoc]")
         self.assertTrue(state4.is_solved)
 
+    def test_load_header(self):
+        server = Server(imports=[])
+        server.load_header("import Init\nopen Nat")
+        state0 = server.goal_start("forall (n : Nat), n + 1 = n.succ")
+        state1 = server.goal_tactic(state0, goal_id=0, tactic="intro")
+        state2 = server.goal_tactic(state1, goal_id=0, tactic="apply add_one")
+        self.assertTrue(state2.is_solved)
+
     def test_load_sorry(self):
         server = Server()
         unit, = server.load_sorry("example (p: Prop): p → p := sorry")
@@ -674,11 +732,11 @@ class TestServer(unittest.TestCase):
             ),
         ])
 
-
     def test_env_add_inspect(self):
         server = Server()
         server.env_add(
             name="mystery",
+            levels=[],
             t="forall (n: Nat), Nat",
             v="fun (n: Nat) => n + 1",
             is_theorem=False,

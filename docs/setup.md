@@ -9,7 +9,7 @@ This builds a wheel of Pantograph in `dist` which can then be installed. For
 example, a downstream project could have this line in its `pyproject.toml`
 
 ```toml
-pantograph = { file = "path/to/wheel/dist/pantograph-0.2.19-cp312-cp312-manylinux_2_40_x86_64.whl" }
+pantograph = { file = "path/to/wheel/dist/pantograph-0.3.0-cp312-cp312-manylinux_2_40_x86_64.whl" }
 ```
 
 To run the examples and experiments, setup a poetry shell:
@@ -51,3 +51,27 @@ server = Server(project_path="./path-to-lean-repo/")
 ```
 
 For a complete example, see `examples/`.
+
+## Server Options
+
+The server has some additional options.
+
+- `core_options`: These options are passed to Lean's kernel. For example
+  `set_option pp.all true` in Lean corresponds to passing `pp.all=true` to
+  `core_options`.
+- `options`: These options are given to Pantograph itself. Set `automaticMode`
+  to false to disable automatic goal continuation. Set `timeout` to a positive
+  integer to set tactic execution timeout.
+- `timeout`: This timeout controls the maximum wait time for the server
+  instance. If the server instance does not respond within this timeout limit,
+  it gets terminated. In some cases it is necessary to increase this if loading
+  a Lean project takes too long.
+
+A special note about running in Jupyter: Use the asynchronous version of each
+function.
+
+```python
+server = await Server.create()
+unit, = await server.load_sorry_async(sketch)
+print(unit.goal_state)
+```
