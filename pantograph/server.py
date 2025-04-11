@@ -30,9 +30,6 @@ from pantograph.utils import (
 from pantograph.data import CompilationUnit
 
 
-DEFAULT_CORE_OPTIONS = ["maxHeartbeats=0", "maxRecDepth=100000"]
-
-
 class TacticFailure(Exception):
     """
     Indicates a tactic failed to execute
@@ -57,11 +54,13 @@ class Server:
             # Options for executing the REPL.
             # Set `{ "automaticMode" : False }` to handle resumption by yourself.
             options: Dict[str, Any]={},
-            core_options: List[str]=DEFAULT_CORE_OPTIONS,
+            core_options: List[str]=[],
             timeout: int=60,
             maxread: int=1000000,
             _sync_init: bool=True):
         """
+        options: Given to Pantograph
+        core_options: Given to Lean core
         timeout: Amount of time to wait for execution (in seconds)
         maxread: Maximum number of characters to read (especially important for large proofs and catalogs)
         """
@@ -93,10 +92,10 @@ class Server:
             # Options for executing the REPL.
             # Set `{ "automaticMode" : False }` to handle resumption by yourself.
             options: Dict[str, Any]={},
-            core_options: List[str]=DEFAULT_CORE_OPTIONS,
+            core_options: List[str]=[],
             timeout: int=120,
             maxread: int=1000000,
-            start:bool=True) -> 'Server':
+            start: bool=True) -> 'Server':
         """
         timeout: Amount of time to wait for execution (in seconds)
         maxread: Maximum number of characters to read (especially important for large proofs and catalogs)
