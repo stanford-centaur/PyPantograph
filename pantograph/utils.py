@@ -29,9 +29,6 @@ async def check_output(*args, **kwargs):
 
 class Spwan(pexpect.spawn):
     async def send_async(self, s):
-        if self.delaybeforesend is not None:
-            await asyncio.sleep(self.delaybeforesend)
-
         s = self._coerce_send_string(s)
         self._log(s, 'send')
 
