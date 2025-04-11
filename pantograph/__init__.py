@@ -1,1 +1,1 @@
-from pantograph.server import Server, ServerError, DEFAULT_CORE_OPTIONS
+from pantograph.server import Server, ServerError
