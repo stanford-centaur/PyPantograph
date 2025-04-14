@@ -39,6 +39,7 @@ class Variable:
 
 @dataclass(frozen=True)
 class Goal:
+    id: str
     variables: list[Variable]
     target: Expr
     sibling_dep: list[int] = field(default_factory=lambda: [])
@@ -50,10 +51,11 @@ class Goal:
         """
         :meta public:
         """
-        return Goal(variables=[], target=target)
+        return Goal(id=None, variables=[], target=target)
 
     @staticmethod
     def parse(payload: dict, sibling_map: dict[str, int]):
+        id = payload["name"]
         name = payload.get("userName")
         variables = [Variable.parse(v) for v in payload["vars"]]
         target = parse_expr(payload["target"])
@@ -62,14 +64,13 @@ class Goal:
         dependents = payload["target"]["dependentMVars"]
         sibling_dep = [sibling_map[d] for d in dependents if d in sibling_map]
 
-        return Goal(variables, target, sibling_dep, name, is_conversion)
+        return Goal(id, variables, target, sibling_dep, name, is_conversion)
 
     def __str__(self):
-        """
-        :meta public:
-        """
+        head = f"{self.name}\n" if self.name else ""
         front = "|" if self.is_conversion else "⊢"
-        return "\n".join(str(v) for v in self.variables) + \
+        return head +\
+            "\n".join(str(v) for v in self.variables) +\
             f"\n{front} {self.target}"
 
 @dataclass(frozen=True)

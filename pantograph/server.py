@@ -30,9 +30,6 @@ from pantograph.utils import (
 from pantograph.data import CompilationUnit
 
 
-DEFAULT_CORE_OPTIONS = ["maxHeartbeats=0", "maxRecDepth=100000"]
-
-
 class TacticFailure(Exception):
     """
     Indicates a tactic failed to execute
@@ -57,11 +54,13 @@ class Server:
             # Options for executing the REPL.
             # Set `{ "automaticMode" : False }` to handle resumption by yourself.
             options: Dict[str, Any]={},
-            core_options: List[str]=DEFAULT_CORE_OPTIONS,
+            core_options: List[str]=[],
             timeout: int=60,
             maxread: int=1000000,
             _sync_init: bool=True):
         """
+        options: Given to Pantograph
+        core_options: Given to Lean core
         timeout: Amount of time to wait for execution (in seconds)
         maxread: Maximum number of characters to read (especially important for large proofs and catalogs)
         """
@@ -93,10 +92,10 @@ class Server:
             # Options for executing the REPL.
             # Set `{ "automaticMode" : False }` to handle resumption by yourself.
             options: Dict[str, Any]={},
-            core_options: List[str]=DEFAULT_CORE_OPTIONS,
+            core_options: List[str]=[],
             timeout: int=120,
             maxread: int=1000000,
-            start:bool=True) -> 'Server':
+            start: bool=True) -> 'Server':
         """
         timeout: Amount of time to wait for execution (in seconds)
         maxread: Maximum number of characters to read (especially important for large proofs and catalogs)
@@ -330,6 +329,40 @@ class Server:
 
     goal_conv_end = to_sync(goal_conv_end_async)
 
+    async def goal_continue_async(self, target: GoalState, branch: GoalState) -> GoalState:
+        """
+        After finish searching `target`, resume search on `branch`
+        """
+        result = await self.run_async('goal.continue', {
+            "target": target.state_id,
+            "branch": branch.state_id,
+        })
+        if "error" in result:
+            raise ServerError(result)
+        if "tacticErrors" in result:
+            raise ServerError(result)
+        if "parseError" in result:
+            raise ServerError(result)
+        return GoalState.parse(result, self.to_remove_goal_states)
+    goal_continue = to_sync(goal_continue_async)
+
+    async def goal_resume_async(self, state: GoalState, goals: list[Goal]) -> GoalState:
+        """
+        Bring `goals` back into scope
+        """
+        result = await self.run_async('goal.continue', {
+            "target": state.state_id,
+            "goals": [goal.name for goal in goals],
+        })
+        if "error" in result:
+            raise ServerError(result)
+        if "tacticErrors" in result:
+            raise ServerError(result)
+        if "parseError" in result:
+            raise ServerError(result)
+        return GoalState.parse(result, self.to_remove_goal_states)
+    goal_resume = to_sync(goal_resume_async)
+
     async def tactic_invocations_async(self, file_name: Union[str, Path]) -> List[CompilationUnit]:
         """
         Collect tactic invocation points in file, and return them.
@@ -552,6 +585,7 @@ class TestServer(unittest.TestCase):
         state1 = server.goal_tactic(state0, goal_id=0, tactic="intro a")
         self.assertEqual(state1.state_id, 1)
         self.assertEqual(state1.goals, [Goal(
+            "_uniq.11",
             variables=[Variable(name="a", t="Prop")],
             target="∀ (q : Prop), a ∨ q → q ∨ a",
             name=None,
@@ -586,6 +620,7 @@ class TestServer(unittest.TestCase):
         state1 = server.goal_tactic(state0, goal_id=0, tactic="intro a b h")
         self.assertEqual(state1.state_id, 1)
         self.assertEqual(state1.goals, [Goal(
+            "_uniq.17",
             variables=[
                 Variable(name="a", t="Prop"),
                 Variable(name="b", t="Prop"),
@@ -597,6 +632,7 @@ class TestServer(unittest.TestCase):
         state2 = server.goal_tactic(state1, goal_id=0, tactic="cases h")
         self.assertEqual(state2.goals, [
             Goal(
+                "_uniq.61",
                 variables=[
                     Variable(name="a", t="Prop"),
                     Variable(name="b", t="Prop"),
@@ -606,6 +642,7 @@ class TestServer(unittest.TestCase):
                 name="inl",
             ),
             Goal(
+                "_uniq.74",
                 variables=[
                     Variable(name="a", t="Prop"),
                     Variable(name="b", t="Prop"),
@@ -619,6 +656,7 @@ class TestServer(unittest.TestCase):
         state4 = server.goal_tactic(state3, goal_id=0, tactic="assumption")
         self.assertEqual(state4.goals, [
             Goal(
+                "_uniq.61",
                 variables=[
                     Variable(name="a", t="Prop"),
                     Variable(name="b", t="Prop"),
@@ -635,10 +673,12 @@ class TestServer(unittest.TestCase):
         state1 = server.goal_tactic(state0, goal_id=0, tactic=TacticHave(branch="2 = 1 + 1", binder_name="h"))
         self.assertEqual(state1.goals, [
             Goal(
+                "_uniq.152",
                 variables=[],
                 target="2 = 1 + 1",
             ),
             Goal(
+                "_uniq.154",
                 variables=[Variable(name="h", t="2 = 1 + 1")],
                 target="1 + 1 = 2",
             ),
@@ -651,11 +691,13 @@ class TestServer(unittest.TestCase):
             tactic=TacticLet(branch="2 = 1 + 1", binder_name="h"))
         self.assertEqual(state1.goals, [
             Goal(
+                "_uniq.152",
                 variables=[],
                 name="h",
                 target="2 = 1 + 1",
             ),
             Goal(
+                "_uniq.154",
                 variables=[Variable(name="h", t="2 = 1 + 1", v="?h")],
                 target="1 + 1 = 2",
             ),
@@ -674,11 +716,13 @@ class TestServer(unittest.TestCase):
         state2 = server.goal_tactic(state1, goal_id=0, tactic=TacticCalc("1 + a + 1 = a + 1 + 1"))
         self.assertEqual(state2.goals, [
             Goal(
+                "_uniq.315",
                 variables,
                 target="1 + a + 1 = a + 1 + 1",
                 name='calc',
             ),
             Goal(
+                "_uniq.334",
                 variables,
                 target="a + 1 + 1 = a + b",
             ),
@@ -709,6 +753,7 @@ class TestServer(unittest.TestCase):
         state0 = unit.goal_state
         self.assertEqual(state0.goals, [
             Goal(
+                "_uniq.6",
                 [Variable(name="p", t="Prop")],
                 target="p → p",
             ),
@@ -720,10 +765,12 @@ class TestServer(unittest.TestCase):
         state1b = server.goal_tactic(state0, goal_id=0, tactic=TacticDraft("by\nhave h1 : Or p p := sorry\nsorry"))
         self.assertEqual(state1b.goals, [
             Goal(
+                "_uniq.17",
                 [Variable(name="p", t="Prop")],
                 target="p ∨ p",
             ),
             Goal(
+                "_uniq.19",
                 [
                     Variable(name="p", t="Prop"),
                     Variable(name="h1", t="p ∨ p"),
@@ -754,6 +801,7 @@ class TestServer(unittest.TestCase):
             state0b = server.goal_load(path)
             self.assertEqual(state0b.goals, [
                 Goal(
+                    "_uniq.9",
                     variables=[
                     ],
                     target="∀ (p q : Prop), p ∨ q → q ∨ p",
