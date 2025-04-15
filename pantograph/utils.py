@@ -27,7 +27,7 @@ async def check_output(*args, **kwargs):
     if p.returncode == 0:
         return stdout_data
 
-class Spwan(pexpect.spawn):
+class Spawn(pexpect.spawn):
     async def send_async(self, s):
         s = self._coerce_send_string(s)
         self._log(s, 'send')
