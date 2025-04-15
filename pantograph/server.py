@@ -428,6 +428,24 @@ class Server:
 
     load_header = to_sync(load_header)
 
+    async def check_compile_async(self, code: str):
+        """
+        Check if some Lean code compiles
+        """
+        result = await self.run_async('frontend.process', {
+            'file': code,
+            'invocations': False,
+            "sorrys": False,
+            "newConstants": False,
+            "readHeader": False,
+            "inheritEnv": False,
+            "typeErrorsAsGoals": False,
+        })
+        if "error" in result:
+            raise ServerError(result)
+
+    check_compile = to_sync(check_compile_async)
+
     async def env_add_async(self, name: str, levels: list[str], t: Expr, v: Expr, is_theorem: bool = True):
         """
         Adds a definition to the environment.
