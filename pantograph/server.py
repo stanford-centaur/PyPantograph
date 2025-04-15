@@ -21,7 +21,7 @@ from pantograph.expr import (
 )
 from pantograph.utils import (
     to_sync,
-    Spwan,
+    Spawn,
     _get_proc_cwd,
     _get_proc_path,
     get_lean_path_async,
@@ -151,7 +151,7 @@ class Server:
         if self.lean_path:
             env = env | {'LEAN_PATH': self.lean_path}
 
-        self.proc = Spwan(
+        self.proc = Spawn(
             f"{self.proc_path} {self.args}",
             encoding="utf-8",
             maxread=self.maxread,
