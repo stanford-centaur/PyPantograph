@@ -420,6 +420,11 @@ class Server:
         })
         if "error" in result:
             raise ServerError(result)
+        units = [
+            CompilationUnit.parse(payload, goal_state_sentinel=self.to_remove_goal_states)
+            for payload in result['units']
+        ]
+        return units
 
     check_compile = to_sync(check_compile_async)
 
@@ -772,6 +777,17 @@ class TestServer(unittest.TestCase):
                 ],
                 target="p → p",
             ),
+        ])
+
+    def test_check_compile(self):
+        server = Server()
+        unit, = server.check_compile("example (p: Prop) : p -> p := id")
+        self.assertEqual(unit.messages, [])
+        unit, = server.check_compile("example (p: Prop) : p -> p := 1")
+        self.assertEqual(unit.messages, [
+            "<anonymous>:1:30: error: numerals are data in Lean, but the expected type is "
+            "a proposition\n"
+            "  p → p : Prop\n"
         ])
 
     def test_env_add_inspect(self):
