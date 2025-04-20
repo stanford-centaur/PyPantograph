@@ -74,7 +74,7 @@ class Server:
 
         self.options = options
         self.core_options = core_options
-        self.args = " ".join(imports + [f'--{opt}' for opt in core_options])
+        self.args = imports + [f'--{opt}' for opt in core_options]
         self.proc = None
         if _sync_init:
             self.restart()
@@ -153,9 +153,7 @@ class Server:
         )
         await self.proc.stdin.drain()
         try:
-            ready = await self.proc.stdout.readline()
-            #ready = await self.proc.stdout.readline()
-            #ready = await asyncio.wait_for(self.proc.stdout.readline(), self.timeout)
+            ready = await asyncio.wait_for(self.proc.stdout.readline(), self.timeout)
             ready = ready.decode().strip()
             assert ready == "ready.", f"Server failed to emit ready signal: {ready}; This could be caused by Lean version mismatch between the project and Pantograph or insufficient timeout."
         except asyncio.TimeoutError as ex:
@@ -180,12 +178,11 @@ class Server:
         await self.proc.stdin.drain()
         try:
             line = await asyncio.wait_for(self.proc.stdout.readline(), self.timeout)
-            line = ready.decode().strip()
-            obj = json.loads(line)
-            return obj
+            line = line.decode().strip()
+            return json.loads(line)
         except Exception as e:
             self._close()
-            raise ServerError(f"Cannot decode: '{line}\n{remainder}'") from e
+            raise ServerError("Cannot decode") from e
 
     run = to_sync(run_async)
 
