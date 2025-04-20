@@ -42,7 +42,7 @@ class Goal:
     id: str
     variables: list[Variable]
     target: Expr
-    sibling_dep: list[int] = field(default_factory=lambda: [])
+    sibling_dep: Optional[list[int]] = field(default_factory=lambda: None)
     name: Optional[str] = None
     is_conversion: bool = False
 
@@ -61,8 +61,8 @@ class Goal:
         target = parse_expr(payload["target"])
         is_conversion = payload["isConversion"]
 
-        dependents = payload["target"]["dependentMVars"]
-        sibling_dep = [sibling_map[d] for d in dependents if d in sibling_map]
+        dependents = payload["target"].get("dependentMVars")
+        sibling_dep = [sibling_map[d] for d in dependents if d in sibling_map] if dependents else None
 
         return Goal(id, variables, target, sibling_dep, name, is_conversion)
 
