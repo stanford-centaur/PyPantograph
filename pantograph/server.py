@@ -2,7 +2,7 @@
 Class which manages a Pantograph instance. All calls to the kernel uses this
 interface.
 """
-import json, pexpect, unittest, os
+import json, unittest, os, asyncio
 from typing import Union, List, Optional, Dict, List, Any
 from pathlib import Path
 
@@ -124,18 +124,11 @@ class Server:
         self._close()
 
     def __del__(self):
-        self._close()
+        pass #self._close()
 
     def _close(self):
-        if self.proc is not None:
-            try:
-                if self.proc.async_pw_transport:
-                    self.proc.async_pw_transport[1].close()
-                self.proc.close()
-                if self.proc.isalive():
-                    self.proc.terminate(force=True)
-            except:
-                pass
+        if self.proc:
+            self.proc.terminate()
             self.proc = None
 
     def is_automatic(self):
@@ -145,67 +138,58 @@ class Server:
         return self.options.get("automaticMode", True)
 
     async def restart_async(self):
-        if self.proc is not None:
-            self._close()
+        self._close()
         env = os.environ
         if self.lean_path:
             env = env | {'LEAN_PATH': self.lean_path}
 
-        self.proc = Spawn(
-            f"{self.proc_path} {self.args}",
-            encoding="utf-8",
-            maxread=self.maxread,
-            timeout=self.timeout,
+        self.proc = await asyncio.create_subprocess_exec(
+            self.proc_path,
+            *self.args,
+            stdin=asyncio.subprocess.PIPE,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
             cwd=self.project_path,
             env=env,
         )
-        self.proc.setecho(False) # Do not send any command before this.
+        await self.proc.stdin.drain()
         try:
-            ready = await self.proc.readline_async() # Reads the "ready."
-            assert ready.rstrip() == "ready.", f"Server failed to emit ready signal: {ready}; This could be caused by Lean version mismatch between the project and Pantograph or insufficient timeout."
-        except pexpect.exceptions.TIMEOUT as exc:
-            raise RuntimeError("Server failed to emit ready signal in time") from exc
+            ready = await self.proc.stdout.readline()
+            #ready = await self.proc.stdout.readline()
+            #ready = await asyncio.wait_for(self.proc.stdout.readline(), self.timeout)
+            ready = ready.decode().strip()
+            while ready == "":
+                ready = await self.proc.stdout.readline()
+                ready = ready.decode().strip()
+            assert ready == "ready.", f"Server failed to emit ready signal: {ready}; This could be caused by Lean version mismatch between the project and Pantograph or insufficient timeout."
+        except asyncio.TimeoutError as ex:
+            raise RuntimeError("Server failed to emit ready signal in time") from ex
 
         if self.options:
-            await self.run_async("options.set", self.options, assert_no_error=True)
-
-        await self.run_async('options.set', {'printDependentMVars': True}, assert_no_error=True)
+            await self.run_async("options.set", self.options)
 
     restart = to_sync(restart_async)
 
-    async def run_async(self, cmd, payload, assert_no_error=False):
+    async def run_async(self, cmd, payload):
         """
         Runs a raw JSON command. Preferably use one of the commands below.
 
         :meta private:
         """
         assert self.proc, "Server not running."
+
         s = json.dumps(payload, ensure_ascii=False)
-        await self.proc.sendline_async(f"{cmd} {s}")
+        command = f"{cmd} {s}\n"
+        self.proc.stdin.write(command.encode())
+        await self.proc.stdin.drain()
         try:
-            line = await self.proc.readline_async()
-            try:
-                obj = json.loads(line)
-                if obj.get("error") == "io":
-                    # The server is dead
-                    self._close()
-                if "error" in obj and assert_no_error:
-                    raise ServerError(obj)
-                return obj
-            except Exception as e:
-                if self.proc.closed:
-                    raise ServerError(f"Cannot decode: '{line}'") from e
-                self.proc.sendeof()
-                remainder = await self.proc.read_async()
-                self._close()
-                raise ServerError(f"Cannot decode: '{line}\n{remainder}'") from e
-        except pexpect.exceptions.TIMEOUT as exc:
+            line = await asyncio.wait_for(self.proc.stdout.readline(), self.timeout)
+            line = ready.decode().strip()
+            obj = json.loads(line)
+            return obj
+        except Exception as e:
             self._close()
-            result = {"error": "timeout", "message": str(exc)}
-            if assert_no_error:
-                raise ServerError(result) from exc
-            else:
-                return result
+            raise ServerError(f"Cannot decode: '{line}\n{remainder}'") from e
 
     run = to_sync(run_async)
 
