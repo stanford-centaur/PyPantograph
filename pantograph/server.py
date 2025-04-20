@@ -21,7 +21,6 @@ from pantograph.expr import (
 )
 from pantograph.utils import (
     to_sync,
-    Spawn,
     _get_proc_cwd,
     _get_proc_path,
     get_lean_path_async,
@@ -158,9 +157,6 @@ class Server:
             #ready = await self.proc.stdout.readline()
             #ready = await asyncio.wait_for(self.proc.stdout.readline(), self.timeout)
             ready = ready.decode().strip()
-            while ready == "":
-                ready = await self.proc.stdout.readline()
-                ready = ready.decode().strip()
             assert ready == "ready.", f"Server failed to emit ready signal: {ready}; This could be caused by Lean version mismatch between the project and Pantograph or insufficient timeout."
         except asyncio.TimeoutError as ex:
             raise RuntimeError("Server failed to emit ready signal in time") from ex
