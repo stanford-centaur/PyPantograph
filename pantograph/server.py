@@ -800,7 +800,7 @@ class TestServer(unittest.TestCase):
             is_theorem=False,
         )
         inspect_result = server.env_inspect(name="mystery")
-        self.assertEqual(inspect_result['type'], {'pp': 'Nat → Nat', 'dependentMVars': []})
+        self.assertEqual(inspect_result['type'], {'pp': 'Nat → Nat'})
 
     def test_goal_state_pickling(self):
         import tempfile
