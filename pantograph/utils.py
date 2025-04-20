@@ -3,9 +3,10 @@ from pathlib import Path
 import functools as F
 
 def to_sync(func):
+    loop = asyncio.get_event_loop()
     @F.wraps(func)
     def wrapper(*args, **kwargs):
-        return asyncio.run(func(*args, **kwargs))
+        return loop.run_until_complete(func(*args, **kwargs))
     return wrapper
 
 async def check_output(*args, **kwargs):
