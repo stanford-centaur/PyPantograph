@@ -16,7 +16,7 @@ python = ">=3.9.0"
 
 [tool.poetry.build]
 generate-setup-file = false
-script = "build.py"
+script = "build-pantograph.py"
 
 [tool.poetry.group.doc]
 optional = true
