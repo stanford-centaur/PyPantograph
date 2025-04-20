@@ -21,7 +21,7 @@ from pantograph.expr import (
 )
 from pantograph.utils import (
     to_sync,
-    Spwan,
+    Spawn,
     _get_proc_cwd,
     _get_proc_path,
     get_lean_path_async,
@@ -151,7 +151,7 @@ class Server:
         if self.lean_path:
             env = env | {'LEAN_PATH': self.lean_path}
 
-        self.proc = Spwan(
+        self.proc = Spawn(
             f"{self.proc_path} {self.args}",
             encoding="utf-8",
             maxread=self.maxread,
@@ -427,6 +427,29 @@ class Server:
             raise ServerError(result)
 
     load_header = to_sync(load_header)
+
+    async def check_compile_async(self, code: str):
+        """
+        Check if some Lean code compiles
+        """
+        result = await self.run_async('frontend.process', {
+            'file': code,
+            'invocations': False,
+            "sorrys": False,
+            "newConstants": False,
+            "readHeader": False,
+            "inheritEnv": False,
+            "typeErrorsAsGoals": False,
+        })
+        if "error" in result:
+            raise ServerError(result)
+        units = [
+            CompilationUnit.parse(payload, goal_state_sentinel=self.to_remove_goal_states)
+            for payload in result['units']
+        ]
+        return units
+
+    check_compile = to_sync(check_compile_async)
 
     async def env_add_async(self, name: str, levels: list[str], t: Expr, v: Expr, is_theorem: bool = True):
         """
@@ -777,6 +800,17 @@ class TestServer(unittest.TestCase):
                 ],
                 target="p → p",
             ),
+        ])
+
+    def test_check_compile(self):
+        server = Server()
+        unit, = server.check_compile("example (p: Prop) : p -> p := id")
+        self.assertEqual(unit.messages, [])
+        unit, = server.check_compile("example (p: Prop) : p -> p := 1")
+        self.assertEqual(unit.messages, [
+            "<anonymous>:1:30: error: numerals are data in Lean, but the expected type is "
+            "a proposition\n"
+            "  p → p : Prop\n"
         ])
 
     def test_env_add_inspect(self):
