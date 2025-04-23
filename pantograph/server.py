@@ -2,7 +2,7 @@
 Class which manages a Pantograph instance. All calls to the kernel uses this
 interface.
 """
-import json, pexpect, unittest, os
+import json, unittest, os, asyncio
 from typing import Union, List, Optional, Dict, List, Any
 from pathlib import Path
 
@@ -21,16 +21,12 @@ from pantograph.expr import (
 )
 from pantograph.utils import (
     to_sync,
-    Spwan,
     _get_proc_cwd,
     _get_proc_path,
     get_lean_path_async,
     get_lean_path,
 )
 from pantograph.data import CompilationUnit
-
-
-DEFAULT_CORE_OPTIONS = ["maxHeartbeats=0", "maxRecDepth=100000"]
 
 
 class TacticFailure(Exception):
@@ -57,11 +53,13 @@ class Server:
             # Options for executing the REPL.
             # Set `{ "automaticMode" : False }` to handle resumption by yourself.
             options: Dict[str, Any]={},
-            core_options: List[str]=DEFAULT_CORE_OPTIONS,
+            core_options: List[str]=[],
             timeout: int=60,
             maxread: int=1000000,
             _sync_init: bool=True):
         """
+        options: Given to Pantograph
+        core_options: Given to Lean core
         timeout: Amount of time to wait for execution (in seconds)
         maxread: Maximum number of characters to read (especially important for large proofs and catalogs)
         """
@@ -76,7 +74,7 @@ class Server:
 
         self.options = options
         self.core_options = core_options
-        self.args = " ".join(imports + [f'--{opt}' for opt in core_options])
+        self.args = imports + [f'--{opt}' for opt in core_options]
         self.proc = None
         if _sync_init:
             self.restart()
@@ -93,10 +91,10 @@ class Server:
             # Options for executing the REPL.
             # Set `{ "automaticMode" : False }` to handle resumption by yourself.
             options: Dict[str, Any]={},
-            core_options: List[str]=DEFAULT_CORE_OPTIONS,
+            core_options: List[str]=[],
             timeout: int=120,
             maxread: int=1000000,
-            start:bool=True) -> 'Server':
+            start: bool=True) -> 'Server':
         """
         timeout: Amount of time to wait for execution (in seconds)
         maxread: Maximum number of characters to read (especially important for large proofs and catalogs)
@@ -125,18 +123,11 @@ class Server:
         self._close()
 
     def __del__(self):
-        self._close()
+        pass #self._close()
 
     def _close(self):
-        if self.proc is not None:
-            try:
-                if self.proc.async_pw_transport:
-                    self.proc.async_pw_transport[1].close()
-                self.proc.close()
-                if self.proc.isalive():
-                    self.proc.terminate(force=True)
-            except:
-                pass
+        if self.proc:
+            self.proc.terminate()
             self.proc = None
 
     def is_automatic(self):
@@ -146,67 +137,52 @@ class Server:
         return self.options.get("automaticMode", True)
 
     async def restart_async(self):
-        if self.proc is not None:
-            self._close()
+        self._close()
         env = os.environ
         if self.lean_path:
             env = env | {'LEAN_PATH': self.lean_path}
 
-        self.proc = Spwan(
-            f"{self.proc_path} {self.args}",
-            encoding="utf-8",
-            maxread=self.maxread,
-            timeout=self.timeout,
+        self.proc = await asyncio.create_subprocess_exec(
+            self.proc_path,
+            *self.args,
+            stdin=asyncio.subprocess.PIPE,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
             cwd=self.project_path,
             env=env,
         )
-        self.proc.setecho(False) # Do not send any command before this.
+        await self.proc.stdin.drain()
         try:
-            ready = await self.proc.readline_async() # Reads the "ready."
-            assert ready.rstrip() == "ready.", f"Server failed to emit ready signal: {ready}; This could be caused by Lean version mismatch between the project and Pantograph or insufficient timeout."
-        except pexpect.exceptions.TIMEOUT as exc:
-            raise RuntimeError("Server failed to emit ready signal in time") from exc
+            ready = await asyncio.wait_for(self.proc.stdout.readline(), self.timeout)
+            ready = ready.decode().strip()
+            assert ready == "ready.", f"Server failed to emit ready signal: {ready}; This could be caused by Lean version mismatch between the project and Pantograph or insufficient timeout."
+        except asyncio.TimeoutError as ex:
+            raise RuntimeError("Server failed to emit ready signal in time") from ex
 
         if self.options:
-            await self.run_async("options.set", self.options, assert_no_error=True)
-
-        await self.run_async('options.set', {'printDependentMVars': True}, assert_no_error=True)
+            await self.run_async("options.set", self.options)
 
     restart = to_sync(restart_async)
 
-    async def run_async(self, cmd, payload, assert_no_error=False):
+    async def run_async(self, cmd, payload):
         """
         Runs a raw JSON command. Preferably use one of the commands below.
 
         :meta private:
         """
         assert self.proc, "Server not running."
+
         s = json.dumps(payload, ensure_ascii=False)
-        await self.proc.sendline_async(f"{cmd} {s}")
+        command = f"{cmd} {s}\n"
+        self.proc.stdin.write(command.encode())
+        await self.proc.stdin.drain()
         try:
-            line = await self.proc.readline_async()
-            try:
-                obj = json.loads(line)
-                if obj.get("error") == "io":
-                    # The server is dead
-                    self._close()
-                if "error" in obj and assert_no_error:
-                    raise ServerError(obj)
-                return obj
-            except Exception as e:
-                if self.proc.closed:
-                    raise ServerError(f"Cannot decode: '{line}'") from e
-                self.proc.sendeof()
-                remainder = await self.proc.read_async()
-                self._close()
-                raise ServerError(f"Cannot decode: '{line}\n{remainder}'") from e
-        except pexpect.exceptions.TIMEOUT as exc:
+            line = await asyncio.wait_for(self.proc.stdout.readline(), self.timeout)
+            line = line.decode().strip()
+            return json.loads(line)
+        except Exception as e:
             self._close()
-            result = {"error": "timeout", "message": str(exc)}
-            if assert_no_error:
-                raise ServerError(result) from exc
-            else:
-                return result
+            raise ServerError("Cannot decode") from e
 
     run = to_sync(run_async)
 
@@ -330,6 +306,40 @@ class Server:
 
     goal_conv_end = to_sync(goal_conv_end_async)
 
+    async def goal_continue_async(self, target: GoalState, branch: GoalState) -> GoalState:
+        """
+        After finish searching `target`, resume search on `branch`
+        """
+        result = await self.run_async('goal.continue', {
+            "target": target.state_id,
+            "branch": branch.state_id,
+        })
+        if "error" in result:
+            raise ServerError(result)
+        if "tacticErrors" in result:
+            raise ServerError(result)
+        if "parseError" in result:
+            raise ServerError(result)
+        return GoalState.parse(result, self.to_remove_goal_states)
+    goal_continue = to_sync(goal_continue_async)
+
+    async def goal_resume_async(self, state: GoalState, goals: list[Goal]) -> GoalState:
+        """
+        Bring `goals` back into scope
+        """
+        result = await self.run_async('goal.continue', {
+            "target": state.state_id,
+            "goals": [goal.name for goal in goals],
+        })
+        if "error" in result:
+            raise ServerError(result)
+        if "tacticErrors" in result:
+            raise ServerError(result)
+        if "parseError" in result:
+            raise ServerError(result)
+        return GoalState.parse(result, self.to_remove_goal_states)
+    goal_resume = to_sync(goal_resume_async)
+
     async def tactic_invocations_async(self, file_name: Union[str, Path]) -> List[CompilationUnit]:
         """
         Collect tactic invocation points in file, and return them.
@@ -394,6 +404,29 @@ class Server:
             raise ServerError(result)
 
     load_header = to_sync(load_header)
+
+    async def check_compile_async(self, code: str):
+        """
+        Check if some Lean code compiles
+        """
+        result = await self.run_async('frontend.process', {
+            'file': code,
+            'invocations': False,
+            "sorrys": False,
+            "newConstants": False,
+            "readHeader": False,
+            "inheritEnv": False,
+            "typeErrorsAsGoals": False,
+        })
+        if "error" in result:
+            raise ServerError(result)
+        units = [
+            CompilationUnit.parse(payload, goal_state_sentinel=self.to_remove_goal_states)
+            for payload in result['units']
+        ]
+        return units
+
+    check_compile = to_sync(check_compile_async)
 
     async def env_add_async(self, name: str, levels: list[str], t: Expr, v: Expr, is_theorem: bool = True):
         """
@@ -552,6 +585,7 @@ class TestServer(unittest.TestCase):
         state1 = server.goal_tactic(state0, goal_id=0, tactic="intro a")
         self.assertEqual(state1.state_id, 1)
         self.assertEqual(state1.goals, [Goal(
+            "_uniq.11",
             variables=[Variable(name="a", t="Prop")],
             target="∀ (q : Prop), a ∨ q → q ∨ a",
             name=None,
@@ -586,6 +620,7 @@ class TestServer(unittest.TestCase):
         state1 = server.goal_tactic(state0, goal_id=0, tactic="intro a b h")
         self.assertEqual(state1.state_id, 1)
         self.assertEqual(state1.goals, [Goal(
+            "_uniq.17",
             variables=[
                 Variable(name="a", t="Prop"),
                 Variable(name="b", t="Prop"),
@@ -597,6 +632,7 @@ class TestServer(unittest.TestCase):
         state2 = server.goal_tactic(state1, goal_id=0, tactic="cases h")
         self.assertEqual(state2.goals, [
             Goal(
+                "_uniq.61",
                 variables=[
                     Variable(name="a", t="Prop"),
                     Variable(name="b", t="Prop"),
@@ -606,6 +642,7 @@ class TestServer(unittest.TestCase):
                 name="inl",
             ),
             Goal(
+                "_uniq.74",
                 variables=[
                     Variable(name="a", t="Prop"),
                     Variable(name="b", t="Prop"),
@@ -619,6 +656,7 @@ class TestServer(unittest.TestCase):
         state4 = server.goal_tactic(state3, goal_id=0, tactic="assumption")
         self.assertEqual(state4.goals, [
             Goal(
+                "_uniq.61",
                 variables=[
                     Variable(name="a", t="Prop"),
                     Variable(name="b", t="Prop"),
@@ -635,10 +673,12 @@ class TestServer(unittest.TestCase):
         state1 = server.goal_tactic(state0, goal_id=0, tactic=TacticHave(branch="2 = 1 + 1", binder_name="h"))
         self.assertEqual(state1.goals, [
             Goal(
+                "_uniq.152",
                 variables=[],
                 target="2 = 1 + 1",
             ),
             Goal(
+                "_uniq.154",
                 variables=[Variable(name="h", t="2 = 1 + 1")],
                 target="1 + 1 = 2",
             ),
@@ -651,11 +691,13 @@ class TestServer(unittest.TestCase):
             tactic=TacticLet(branch="2 = 1 + 1", binder_name="h"))
         self.assertEqual(state1.goals, [
             Goal(
+                "_uniq.152",
                 variables=[],
                 name="h",
                 target="2 = 1 + 1",
             ),
             Goal(
+                "_uniq.154",
                 variables=[Variable(name="h", t="2 = 1 + 1", v="?h")],
                 target="1 + 1 = 2",
             ),
@@ -674,11 +716,13 @@ class TestServer(unittest.TestCase):
         state2 = server.goal_tactic(state1, goal_id=0, tactic=TacticCalc("1 + a + 1 = a + 1 + 1"))
         self.assertEqual(state2.goals, [
             Goal(
+                "_uniq.315",
                 variables,
                 target="1 + a + 1 = a + 1 + 1",
                 name='calc',
             ),
             Goal(
+                "_uniq.334",
                 variables,
                 target="a + 1 + 1 = a + b",
             ),
@@ -709,6 +753,7 @@ class TestServer(unittest.TestCase):
         state0 = unit.goal_state
         self.assertEqual(state0.goals, [
             Goal(
+                "_uniq.6",
                 [Variable(name="p", t="Prop")],
                 target="p → p",
             ),
@@ -720,16 +765,29 @@ class TestServer(unittest.TestCase):
         state1b = server.goal_tactic(state0, goal_id=0, tactic=TacticDraft("by\nhave h1 : Or p p := sorry\nsorry"))
         self.assertEqual(state1b.goals, [
             Goal(
+                "_uniq.17",
                 [Variable(name="p", t="Prop")],
                 target="p ∨ p",
             ),
             Goal(
+                "_uniq.19",
                 [
                     Variable(name="p", t="Prop"),
                     Variable(name="h1", t="p ∨ p"),
                 ],
                 target="p → p",
             ),
+        ])
+
+    def test_check_compile(self):
+        server = Server()
+        unit, = server.check_compile("example (p: Prop) : p -> p := id")
+        self.assertEqual(unit.messages, [])
+        unit, = server.check_compile("example (p: Prop) : p -> p := 1")
+        self.assertEqual(unit.messages, [
+            "<anonymous>:1:30: error: numerals are data in Lean, but the expected type is "
+            "a proposition\n"
+            "  p → p : Prop\n"
         ])
 
     def test_env_add_inspect(self):
@@ -742,7 +800,7 @@ class TestServer(unittest.TestCase):
             is_theorem=False,
         )
         inspect_result = server.env_inspect(name="mystery")
-        self.assertEqual(inspect_result['type'], {'pp': 'Nat → Nat', 'dependentMVars': []})
+        self.assertEqual(inspect_result['type'], {'pp': 'Nat → Nat'})
 
     def test_goal_state_pickling(self):
         import tempfile
@@ -754,6 +812,7 @@ class TestServer(unittest.TestCase):
             state0b = server.goal_load(path)
             self.assertEqual(state0b.goals, [
                 Goal(
+                    "_uniq.9",
                     variables=[
                     ],
                     target="∀ (p q : Prop), p ∨ q → q ∨ p",

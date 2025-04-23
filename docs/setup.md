@@ -52,16 +52,14 @@ server = Server(project_path="./path-to-lean-repo/")
 
 For a complete example, see `examples/`.
 
-## Server Options
+## Server Parameters
 
 The server has some additional options.
 
 - `core_options`: These options are passed to Lean's kernel. For example
   `set_option pp.all true` in Lean corresponds to passing `pp.all=true` to
   `core_options`.
-- `options`: These options are given to Pantograph itself. Set `automaticMode`
-  to false to disable automatic goal continuation. Set `timeout` to a positive
-  integer to set tactic execution timeout.
+- `options`: These options are given to Pantograph itself. See below.
 - `timeout`: This timeout controls the maximum wait time for the server
   instance. If the server instance does not respond within this timeout limit,
   it gets terminated. In some cases it is necessary to increase this if loading
@@ -75,3 +73,9 @@ server = await Server.create()
 unit, = await server.load_sorry_async(sketch)
 print(unit.goal_state)
 ```
+
+### Options
+
+- `automaticMode`: Set to false to disable automatic goal continuation.
+- `timeout`: Set to a positive integer to set tactic execution timeout.
+- `printDependentMVars`: Set to true to explicitly store goal inter-dependencies
