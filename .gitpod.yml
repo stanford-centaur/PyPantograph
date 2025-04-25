@@ -1,3 +1,6 @@
+image:
+  file: .docker/gitpod/Dockerfile
+
 additionalRepositories:
  - url: https://github.com/leanprover-community/mathlib4
 
