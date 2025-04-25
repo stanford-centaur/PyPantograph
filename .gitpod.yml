@@ -1,0 +1,12 @@
+additionalRepositories:
+ - url: https://github.com/leanprover-community/mathlib4
+
+vscode:
+  extensions:
+    - leanprover.lean4
+
+tasks:
+  - init: |
+      elan self update
+      cd ../mathlib4
+      lake exe cache get
