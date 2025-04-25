@@ -9,4 +9,5 @@ tasks:
   - init: |
       elan self update
       cd ../mathlib4
+      git checkout v4.18.0
       lake exe cache get
