@@ -20,7 +20,7 @@ uv sync
 
 Build the documentations by
 ```sh
-uv sync --extra doc
+uv sync --only-group doc
 uv run jupyter-book build docs
 ```
 Then serve

@@ -21,7 +21,7 @@ include = ["pantograph/pantograph-repl", "pantograph/lean-toolchain"]
 [tool.hatch.build.targets.wheel]
 include = ["pantograph/pantograph-repl", "pantograph/lean-toolchain"]
 
-[project.optional-dependencies]
+[dependency-groups]
 doc = [
     "notebook>=7.2.1",
     "jupyter-book>=1.0.3",

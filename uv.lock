@@ -1300,18 +1300,19 @@ name = "pantograph"
 version = "0.3.0"
 source = { editable = "." }
 
-[package.optional-dependencies]
+[package.dev-dependencies]
 doc = [
     { name = "jupyter-book" },
     { name = "notebook" },
 ]
 
 [package.metadata]
-requires-dist = [
-    { name = "jupyter-book", marker = "extra == 'doc'", specifier = ">=1.0.3" },
-    { name = "notebook", marker = "extra == 'doc'", specifier = ">=7.2.1" },
+
+[package.metadata.requires-dev]
+doc = [
+    { name = "jupyter-book", specifier = ">=1.0.3" },
+    { name = "notebook", specifier = ">=7.2.1" },
 ]
-provides-extras = ["doc"]
 
 [[package]]
 name = "parso"
