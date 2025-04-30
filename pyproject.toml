@@ -2,30 +2,31 @@
 name = "pantograph"
 version = "0.3.0"
 description = "A machine-to-machine interaction system for Lean"
+license = "Apache-2.0"
+readme = "README.md"
 authors = [
     {name = "Leni Aniva", email = "aniva@stanford.edu"},
     {name = "contributors"}
 ]
-license = "Apache-2.0"
-readme = "README.md"
 requires-python = ">=3.9.0"
 dependencies = []
 
 [build-system]
-requires = ["hatchling"]
-build-backend = "hatchling.build"
+requires = ["poetry-core>=2,<3"]
+build-backend = "poetry.core.masonry.api"
 
-[tool.hatch.build.targets.sdist]
-include = ["pantograph/pantograph-repl", "pantograph/lean-toolchain", "pantograph"]
-
-[tool.hatch.build.targets.wheel]
-include = ["pantograph/pantograph-repl", "pantograph/lean-toolchain", "pantograph"]
-
-[dependency-groups]
-doc = [
-    "notebook>=7.2.1",
-    "jupyter-book>=1.0.3",
+[tool.poetry]
+include = [
+    { path = "pantograph/pantograph-repl", format = ["sdist", "wheel"] },
+    { path = "pantograph/lean-toolchain", format = ["sdist", "wheel"] },
 ]
 
-[tool.hatch.build.hooks.custom]
-path = "build-pantograph.py"
+[tool.poetry.build]
+generate-setup-file = false
+script = "build-pantograph.py"
+
+[tool.poetry.group.doc]
+optional = true
+[tool.poetry.group.doc.dependencies]
+notebook = "^7.2.1"
+jupyter-book = "^1.0.3"
