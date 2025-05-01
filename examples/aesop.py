@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 
-import subprocess
 from pathlib import Path
 from pantograph.server import Server
+
+# This example shows how to use project dependencies
 
 if __name__ == '__main__':
     project_path = Path(__file__).parent.resolve() / 'Example'
