@@ -1,4 +1,4 @@
 [submodule "src"]
 	path = src
 	url = https://github.com/lenianiva/Pantograph.git
-	branch = main
+	branch = dev

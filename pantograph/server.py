@@ -266,12 +266,17 @@ class Server:
         else:
             raise RuntimeError(f"Invalid tactic type: {tactic}")
         result = await self.run_async('goal.tactic', args)
+        messages = result.get("messages")
         if "error" in result:
             raise ServerError(result)
-        if "tacticErrors" in result:
-            raise TacticFailure(result)
+        if "goals" not in result:
+            raise TacticFailure(messages)
         if "parseError" in result:
             raise TacticFailure(result)
+        if result["hasSorry"]:
+            raise TacticFailure(["Tactic generated sorry"] + messages)
+        if result["hasUnsafe"]:
+            raise TacticFailure(["Tactic generated unsafe"] + messages)
         return GoalState.parse(result, self.to_remove_goal_states)
 
     goal_tactic = to_sync(goal_tactic_async)
@@ -556,7 +561,7 @@ class TestServer(unittest.TestCase):
         """
         NOTE: Update this after upstream updates.
         """
-        self.assertEqual(get_version(), "0.3.0")
+        self.assertEqual(get_version(), "0.3.1")
 
     def test_server_init_del(self):
         import warnings
