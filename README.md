@@ -4,7 +4,7 @@ A Machine-to-Machine Interaction System for Lean 4.
 
 ## Installation
 
-1. Install `poetry`
+1. Install `uv`
 2. Clone this repository with submodules:
 ```sh
 git clone --recurse-submodules <repo-path>
@@ -12,16 +12,15 @@ git clone --recurse-submodules <repo-path>
 3. Install `elan` and `lake`: See [Lean Manual](https://docs.lean-lang.org/lean4/doc/setup.html)
 4. Execute
 ```sh
-poetry build
-poetry install
+cd <repo-path>
+uv sync
 ```
 
 ## Documentation
 
 Build the documentations by
 ```sh
-poetry install --only doc
-poetry run jupyter-book build docs
+uvx --with notebook jupyter-book build docs
 ```
 Then serve
 ```sh
