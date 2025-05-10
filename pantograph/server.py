@@ -222,6 +222,7 @@ class Server:
         return GoalState(
             state_id=result["stateId"],
             goals=[Goal.sentence(expr)],
+            messages=[],
             _sentinel=self.to_remove_goal_states,
         )
 
@@ -277,7 +278,7 @@ class Server:
             raise TacticFailure(["Tactic generated sorry"] + messages)
         if result["hasUnsafe"]:
             raise TacticFailure(["Tactic generated unsafe"] + messages)
-        return GoalState.parse(result, self.to_remove_goal_states)
+        return GoalState.parse(result, messages, self.to_remove_goal_states)
 
     goal_tactic = to_sync(goal_tactic_async)
 
@@ -292,7 +293,7 @@ class Server:
             raise ServerError(result)
         if "parseError" in result:
             raise ServerError(result)
-        return GoalState.parse(result, self.to_remove_goal_states)
+        return GoalState.parse(result, [], self.to_remove_goal_states)
 
     goal_conv_begin = to_sync(goal_conv_begin_async)
 
@@ -307,7 +308,7 @@ class Server:
             raise ServerError(result)
         if "parseError" in result:
             raise ServerError(result)
-        return GoalState.parse(result, self.to_remove_goal_states)
+        return GoalState.parse(result, [], self.to_remove_goal_states)
 
     goal_conv_end = to_sync(goal_conv_end_async)
 
@@ -539,7 +540,7 @@ class Server:
         })
         if "error" in result:
             raise ServerError(result["desc"])
-        return GoalState.parse_inner(state_id, result['goals'], self.to_remove_goal_states)
+        return GoalState.parse_inner(state_id, result['goals'], [], self.to_remove_goal_states)
 
     goal_load = to_sync(goal_load_async)
 
