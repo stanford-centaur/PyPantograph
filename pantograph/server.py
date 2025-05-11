@@ -392,7 +392,7 @@ class Server:
 
     load_sorry = to_sync(load_sorry_async)
 
-    async def load_header(self, header: str):
+    async def load_header_async(self, header: str):
         """
         Loads the environment from a header. Set `imports` to `[]` during
         server creation to use this function.
@@ -409,7 +409,7 @@ class Server:
         if "error" in result:
             raise ServerError(result)
 
-    load_header = to_sync(load_header)
+    load_header = to_sync(load_header_async)
 
     async def check_compile_async(self, code: str):
         """
