@@ -52,7 +52,7 @@ class CompilationUnit:
             invocations = None
 
         if (state_id := payload.get("goalStateId")) is not None:
-            goal_state = GoalState.parse_inner(int(state_id), payload["goals"], goal_state_sentinel)
+            goal_state = GoalState.parse_inner(int(state_id), payload["goals"], [], goal_state_sentinel)
             goal_src_boundaries = payload["goalSrcBoundaries"]
         else:
             goal_state = None
