@@ -19,6 +19,7 @@ build-backend = "poetry.core.masonry.api"
 include = [
     { path = "pantograph/pantograph-repl", format = ["sdist", "wheel"] },
     { path = "pantograph/lean-toolchain", format = ["sdist", "wheel"] },
+    { path = "src", format = ["sdist", "wheel"] },
 ]
 
 [tool.poetry.build]
