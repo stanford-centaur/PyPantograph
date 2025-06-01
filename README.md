@@ -5,19 +5,18 @@ A Machine-to-Machine Interaction System for Lean 4.
 ## Installation
 
 1. Install `uv`
-```sh
-curl -LsSf https://astral.sh/uv/install.sh | sh
-```
-2. Install `elan` and `lake`: See [Lean Manual](https://docs.lean-lang.org/lean4/doc/setup.html)
+2. Install `elan`: See [Lean Manual](https://docs.lean-lang.org/lean4/doc/setup.html)
 
 ### Install as a project dependency
-3. Add the package to your project (`--tag` is optional):
+
+3. Add the package to your project:
 ```sh
-uv add git+https://github.com/stanford-centaur/PyPantograph --tag v0.3.0
+uv add git+https://github.com/stanford-centaur/PyPantograph
 uv sync
 ```
 
 ### Build wheels from source
+
 3. Clone this repository with submodules:
 ```sh
 git clone --recurse-submodules <repo-path>
