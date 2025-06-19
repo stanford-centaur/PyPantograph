@@ -2,7 +2,7 @@
 Class which manages a Pantograph instance. All calls to the kernel uses this
 interface.
 """
-import json, unittest, os, asyncio
+import json, unittest, os, asyncio, tempfile
 from typing import Union, List, Optional, Dict, List, Any
 from pathlib import Path
 
@@ -182,7 +182,7 @@ class Server:
             return json.loads(line)
         except Exception as e:
             self._close()
-            raise ServerError("Cannot decode") from e
+            raise ServerError("Cannot decode Json object. A server error may have occurred.") from e
 
     run = to_sync(run_async)
 
@@ -350,20 +350,27 @@ class Server:
         """
         Collect tactic invocation points in file, and return them.
         """
-        result = await self.run_async('frontend.process', {
-            'fileName': str(file_name),
-            'invocations': True,
-            "sorrys": False,
-            "readHeader": True,
-            "inheritEnv": False,
-            "newConstants": False,
-            "typeErrorsAsGoals": False,
-        })
-        if "error" in result:
-            raise ServerError(result)
+        with tempfile.TemporaryDirectory() as tempdirname:
+            invocation_file_name = f"{tempdirname}/invocations.json"
+            result = await self.run_async('frontend.process', {
+                'fileName': str(file_name),
+                'invocations': invocation_file_name,
+                "sorrys": False,
+                "readHeader": True,
+                "inheritEnv": False,
+                "newConstants": False,
+                "typeErrorsAsGoals": False,
+            })
+            if "error" in result:
+                raise ServerError(result)
 
-        units = [CompilationUnit.parse(payload) for payload in result['units']]
-        return units
+            with open(invocation_file_name, "r") as f:
+                data_units = json.load(f)
+                units = [
+                    CompilationUnit.parse(payload, invocations=data_unit["invocations"])
+                    for payload, data_unit in zip(result['units'], data_units['units'])
+                ]
+                return units
 
     tactic_invocations = to_sync(tactic_invocations_async)
 
@@ -374,7 +381,6 @@ class Server:
         """
         result = await self.run_async('frontend.process', {
             'file': content,
-            'invocations': False,
             "sorrys": True,
             "newConstants": False,
             "readHeader": False,
@@ -399,7 +405,6 @@ class Server:
         """
         result = await self.run_async('frontend.process', {
             'file': header,
-            'invocations': False,
             "sorrys": False,
             "newConstants": False,
             "readHeader": True,
@@ -411,13 +416,31 @@ class Server:
 
     load_header = to_sync(load_header_async)
 
+    async def load_definitions_async(self, snippet: str):
+        """
+        Loads definitions in some Lean code and update the environment.
+
+        Existing goal states will not automatically inherit said definitions.
+        """
+        result = await self.run_async('frontend.process', {
+            'file': snippet,
+            "sorrys": False,
+            "newConstants": False,
+            "readHeader": False,
+            "inheritEnv": True,
+            "typeErrorsAsGoals": False,
+        })
+        if "error" in result:
+            raise ServerError(result)
+
+    load_definitions = to_sync(load_definitions_async)
+
     async def check_compile_async(self, code: str):
         """
         Check if some Lean code compiles
         """
         result = await self.run_async('frontend.process', {
             'file': code,
-            'invocations': False,
             "sorrys": False,
             "newConstants": False,
             "readHeader": False,
@@ -562,7 +585,7 @@ class TestServer(unittest.TestCase):
         """
         NOTE: Update this after upstream updates.
         """
-        self.assertEqual(get_version(), "0.3.1")
+        self.assertEqual(get_version(), "0.3.2")
 
     def test_server_init_del(self):
         import warnings
@@ -679,12 +702,12 @@ class TestServer(unittest.TestCase):
         state1 = server.goal_tactic(state0, goal_id=0, tactic=TacticHave(branch="2 = 1 + 1", binder_name="h"))
         self.assertEqual(state1.goals, [
             Goal(
-                "_uniq.152",
+                "_uniq.187",
                 variables=[],
                 target="2 = 1 + 1",
             ),
             Goal(
-                "_uniq.154",
+                "_uniq.189",
                 variables=[Variable(name="h", t="2 = 1 + 1")],
                 target="1 + 1 = 2",
             ),
@@ -697,13 +720,13 @@ class TestServer(unittest.TestCase):
             tactic=TacticLet(branch="2 = 1 + 1", binder_name="h"))
         self.assertEqual(state1.goals, [
             Goal(
-                "_uniq.152",
+                "_uniq.187",
                 variables=[],
                 name="h",
                 target="2 = 1 + 1",
             ),
             Goal(
-                "_uniq.154",
+                "_uniq.189",
                 variables=[Variable(name="h", t="2 = 1 + 1", v="?h")],
                 target="1 + 1 = 2",
             ),
@@ -722,13 +745,13 @@ class TestServer(unittest.TestCase):
         state2 = server.goal_tactic(state1, goal_id=0, tactic=TacticCalc("1 + a + 1 = a + 1 + 1"))
         self.assertEqual(state2.goals, [
             Goal(
-                "_uniq.315",
+                "_uniq.363",
                 variables,
                 target="1 + a + 1 = a + 1 + 1",
                 name='calc',
             ),
             Goal(
-                "_uniq.334",
+                "_uniq.382",
                 variables,
                 target="a + 1 + 1 = a + b",
             ),
@@ -804,6 +827,14 @@ class TestServer(unittest.TestCase):
             t="forall (n: Nat), Nat",
             v="fun (n: Nat) => n + 1",
             is_theorem=False,
+        )
+        inspect_result = server.env_inspect(name="mystery")
+        self.assertEqual(inspect_result['type'], {'pp': 'Nat → Nat'})
+
+    def test_load_definitions(self):
+        server = Server()
+        server.load_definitions(
+            "def mystery (x : Nat) := x + 123"
         )
         inspect_result = server.env_inspect(name="mystery")
         self.assertEqual(inspect_result['type'], {'pp': 'Nat → Nat'})
