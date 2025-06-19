@@ -416,6 +416,25 @@ class Server:
 
     load_header = to_sync(load_header_async)
 
+    async def load_definitions_async(self, snippet: str):
+        """
+        Loads definitions in some Lean code and update the environment.
+
+        Existing goal states will not automatically inherit said definitions.
+        """
+        result = await self.run_async('frontend.process', {
+            'file': snippet,
+            "sorrys": False,
+            "newConstants": False,
+            "readHeader": False,
+            "inheritEnv": True,
+            "typeErrorsAsGoals": False,
+        })
+        if "error" in result:
+            raise ServerError(result)
+
+    load_definitions = to_sync(load_definitions_async)
+
     async def check_compile_async(self, code: str):
         """
         Check if some Lean code compiles
@@ -808,6 +827,14 @@ class TestServer(unittest.TestCase):
             t="forall (n: Nat), Nat",
             v="fun (n: Nat) => n + 1",
             is_theorem=False,
+        )
+        inspect_result = server.env_inspect(name="mystery")
+        self.assertEqual(inspect_result['type'], {'pp': 'Nat → Nat'})
+
+    def test_load_definitions(self):
+        server = Server()
+        server.load_definitions(
+            "def mystery (x : Nat) := x + 123"
         )
         inspect_result = server.env_inspect(name="mystery")
         self.assertEqual(inspect_result['type'], {'pp': 'Nat → Nat'})
