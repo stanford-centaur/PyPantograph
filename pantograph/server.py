@@ -365,10 +365,10 @@ class Server:
                 raise ServerError(result)
 
             with open(invocation_file_name, "r") as f:
-                all_invocations = json.load(f)
+                data_units = json.load(f)
                 units = [
-                    CompilationUnit.parse(payload, invocations)
-                    for payload in zip(result['units'], all_invoactions)
+                    CompilationUnit.parse(payload, invocations=data_unit["invocations"])
+                    for payload, data_unit in zip(result['units'], data_units['units'])
                 ]
                 return units
 
@@ -415,6 +415,25 @@ class Server:
             raise ServerError(result)
 
     load_header = to_sync(load_header_async)
+
+    async def load_definitions_async(self, snippet: str):
+        """
+        Loads definitions in some Lean code and update the environment.
+
+        Existing goal states will not automatically inherit said definitions.
+        """
+        result = await self.run_async('frontend.process', {
+            'file': snippet,
+            "sorrys": False,
+            "newConstants": False,
+            "readHeader": False,
+            "inheritEnv": True,
+            "typeErrorsAsGoals": False,
+        })
+        if "error" in result:
+            raise ServerError(result)
+
+    load_definitions = to_sync(load_definitions_async)
 
     async def check_compile_async(self, code: str):
         """
@@ -566,7 +585,7 @@ class TestServer(unittest.TestCase):
         """
         NOTE: Update this after upstream updates.
         """
-        self.assertEqual(get_version(), "0.3.2")
+        self.assertEqual(get_version(), "0.3.2/v4.9.0")
 
     def test_server_init_del(self):
         import warnings
@@ -808,6 +827,14 @@ class TestServer(unittest.TestCase):
             t="forall (n: Nat), Nat",
             v="fun (n: Nat) => n + 1",
             is_theorem=False,
+        )
+        inspect_result = server.env_inspect(name="mystery")
+        self.assertEqual(inspect_result['type'], {'pp': 'Nat → Nat'})
+
+    def test_load_definitions(self):
+        server = Server()
+        server.load_definitions(
+            "def mystery (x : Nat) := x + 123"
         )
         inspect_result = server.env_inspect(name="mystery")
         self.assertEqual(inspect_result['type'], {'pp': 'Nat → Nat'})
