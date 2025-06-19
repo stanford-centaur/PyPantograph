@@ -44,7 +44,7 @@ class CompilationUnit:
         i_end = payload["boundary"][1]
         messages = payload["messages"]
 
-        if invocations is not None:
+        if invocations:
             invocations = [
                 TacticInvocation.parse(i) for i in invocations
             ]

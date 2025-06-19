@@ -365,10 +365,10 @@ class Server:
                 raise ServerError(result)
 
             with open(invocation_file_name, "r") as f:
-                all_invocations = json.load(f)
+                data_units = json.load(f)
                 units = [
-                    CompilationUnit.parse(payload, invocations)
-                    for payload in zip(result['units'], all_invoactions)
+                    CompilationUnit.parse(payload, invocations=data_unit["invocations"])
+                    for payload, data_unit in zip(result['units'], data_units['units'])
                 ]
                 return units
 
