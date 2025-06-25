@@ -2,8 +2,14 @@ import asyncio
 from pathlib import Path
 import functools as F
 
+def get_event_loop():
+    try:
+        return asyncio.get_running_loop()
+    except RuntimeError:
+        return asyncio.new_event_loop()
+
 def to_sync(func):
-    loop = asyncio.get_event_loop()
+    loop = get_event_loop()
     @F.wraps(func)
     def wrapper(*args, **kwargs):
         return loop.run_until_complete(func(*args, **kwargs))
