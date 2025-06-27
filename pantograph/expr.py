@@ -3,6 +3,7 @@ Data structuers for expressions and goals
 """
 from dataclasses import dataclass, field
 from typing import Optional, TypeAlias
+from enum import Enum
 
 Expr: TypeAlias = str
 
@@ -11,6 +12,19 @@ def parse_expr(payload: dict) -> Expr:
     :meta private:
     """
     return payload["pp"]
+
+class GoalCategory(Enum):
+    TACTIC = 1
+    CONV = 2
+    CALC = 3
+
+    @staticmethod
+    def parse(payload: str):
+        match payload:
+            case "tactic": return GoalCategory.TACTIC
+            case "conv": return GoalCategory.CONV
+            case "calc": return GoalCategory.CALC
+
 
 @dataclass(frozen=True)
 class Variable:
@@ -44,7 +58,7 @@ class Goal:
     target: Expr
     sibling_dep: Optional[list[int]] = field(default_factory=lambda: None)
     name: Optional[str] = None
-    is_conversion: bool = False
+    category: GoalCategory = GoalCategory.TACTIC
 
     @staticmethod
     def sentence(target: Expr):
@@ -59,16 +73,16 @@ class Goal:
         name = payload.get("userName")
         variables = [Variable.parse(v) for v in payload["vars"]]
         target = parse_expr(payload["target"])
-        is_conversion = payload["isConversion"]
+        category = GoalCategory.parse(payload["fragment"])
 
         dependents = payload["target"].get("dependentMVars")
         sibling_dep = [sibling_map[d] for d in dependents if d in sibling_map] if dependents else None
 
-        return Goal(id, variables, target, sibling_dep, name, is_conversion)
+        return Goal(id, variables, target, sibling_dep, name, category)
 
     def __str__(self):
         head = f"{self.name}\n" if self.name else ""
-        front = "|" if self.is_conversion else "⊢"
+        front = "|" if self.category == GoalCategory.CONV else "⊢"
         return head +\
             "\n".join(str(v) for v in self.variables) +\
             f"\n{front} {self.target}"

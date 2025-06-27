@@ -51,8 +51,8 @@ class Server:
             project_path: Optional[str]=None,
             lean_path: Optional[str]=None,
             # Options for executing the REPL.
-            # Set `{ "automaticMode" : False }` to handle resumption by yourself.
             options: Dict[str, Any]={},
+            # Options supplied to the Lean core
             core_options: List[str]=[],
             timeout: int=60,
             maxread: int=1000000,
@@ -585,7 +585,7 @@ class TestServer(unittest.TestCase):
         """
         NOTE: Update this after upstream updates.
         """
-        self.assertEqual(get_version(), "0.3.2")
+        self.assertEqual(get_version(), "0.3.3")
 
     def test_server_init_del(self):
         import warnings
