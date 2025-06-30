@@ -37,6 +37,5 @@ if __name__ == '__main__':
     # Send the draft payload using `TacticDraft`
     state1 = server.goal_tactic(
         unit.goal_state,
-        goal_id=0,
         tactic=TacticDraft(sketch))
     print(state1)

@@ -10,5 +10,5 @@ if __name__ == '__main__':
     print(f"$PWD: {project_path}")
     server = Server(imports=['Example'], project_path=project_path)
     state0 = server.goal_start("forall (p q: Prop), Or p q -> Or q p")
-    state1 = server.goal_tactic(state0, goal_id=0, tactic="aesop")
+    state1 = server.goal_tactic(state0, tactic="aesop")
     assert state1.is_solved
