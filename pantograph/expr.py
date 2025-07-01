@@ -63,7 +63,7 @@ class Goal:
     id: str
     variables: list[Variable]
     target: Expr
-    sibling_dep: Optional[list[int]] = field(default_factory=lambda: None)
+    sibling_dep: Optional[set[int]] = field(default_factory=lambda: None)
     name: Optional[str] = None
     mode: TacticMode = TacticMode.TACTIC
 
@@ -82,8 +82,18 @@ class Goal:
         target = parse_expr(payload["target"])
         mode = TacticMode.parse(payload["fragment"])
 
-        dependents = payload["target"].get("dependentMVars")
-        sibling_dep = [sibling_map[d] for d in dependents if d in sibling_map] if dependents else None
+        sibling_dep = None
+        for e in [payload["target"]] \
+                + [v["type"] for v in payload["vars"]] \
+                + [v["value"] for v in payload["vars"] if "value" in v]:
+            dependents = e.get("dependentMVars")
+            if dependents is None:
+                continue
+            deps = [sibling_map[d] for d in dependents if d in sibling_map]
+            if sibling_dep:
+                sibling_dep = { *sibling_dep, *deps }
+            else:
+                sibling_dep = { *deps }
 
         return Goal(id, variables, target, sibling_dep, name, mode)
 

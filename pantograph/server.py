@@ -740,6 +740,13 @@ class TestServer(unittest.TestCase):
         state4 = server.goal_tactic(state3, "rw [Nat.add_assoc]")
         self.assertTrue(state4.is_solved)
 
+    def test_dependent_mvars(self):
+        server = Server(options={"printDependentMVars": True})
+        state = server.goal_start("∃ (x : Nat), x + 1 = 0")
+        state = server.goal_tactic(state, "apply Exists.intro")
+        self.assertEqual(state.goals[0].sibling_dep, {1})
+        self.assertEqual(state.goals[1].sibling_dep, set())
+
     def test_load_header(self):
         server = Server(imports=[])
         server.load_header("import Init\nopen Nat")
