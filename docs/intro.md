@@ -29,8 +29,8 @@ authors, this is a mistake. An interface conducive for human operators to write
 proofs is often not an interface conductive to machine learning agents for
 searching.
 
-Almost all of Pantograph's business logic is written in Lean, allowing coupling
-between the data extraction and proof search components.
+All of Pantograph's business logic is written in Lean, allowing coupling between
+the data extraction and proof search components.
 
 ## Caveats and Limitations
 
@@ -45,10 +45,6 @@ differently from Lean in some times, but never at the sacrifice of soundness.
 - When Lean LSP says "unresolved goals", that means a proof cannot finish where
   it is supposed to finish at the end of a `by` block. Pantograph will raise the
   error in this case, since it indicates the termination of a proof search branch.
-- `pick_goal` or `swap` will not work since they run contrary to tree search
-  paradigms. However, if there are tactics which perform non-trivial operations
-  to multiple goals at the same time, this constrain could potentially be
-  relaxed at a cost of great bookkeeping overhead to the user.
 
 Pantograph cannot perform things that are inherently constrained by Lean. These
 include:

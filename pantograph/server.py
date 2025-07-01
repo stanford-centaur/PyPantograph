@@ -12,10 +12,11 @@ from pantograph.expr import (
     Variable,
     Goal,
     GoalState,
+    Site,
     Tactic,
     TacticHave,
     TacticLet,
-    TacticCalc,
+    TacticMode,
     TacticExpr,
     TacticDraft,
 )
@@ -51,8 +52,8 @@ class Server:
             project_path: Optional[str]=None,
             lean_path: Optional[str]=None,
             # Options for executing the REPL.
-            # Set `{ "automaticMode" : False }` to handle resumption by yourself.
             options: Dict[str, Any]={},
+            # Options supplied to the Lean core
             core_options: List[str]=[],
             timeout: int=60,
             maxread: int=1000000,
@@ -243,11 +244,11 @@ class Server:
 
     goal_root = to_sync(goal_root_async)
 
-    async def goal_tactic_async(self, state: GoalState, goal_id: int, tactic: Tactic) -> GoalState:
+    async def goal_tactic_async(self, state: GoalState, tactic: Tactic, site: Site = Site()) -> GoalState:
         """
         Execute a tactic on `goal_id` of `state`
         """
-        args = {"stateId": state.state_id, "goalId": goal_id}
+        args = {"stateId": state.state_id, **site.serial()}
         if isinstance(tactic, str):
             args["tactic"] = tactic
         elif isinstance(tactic, TacticHave):
@@ -258,22 +259,22 @@ class Server:
             args["let"] = tactic.branch
             if tactic.binder_name:
                 args["binderName"] = tactic.binder_name
-        elif isinstance(tactic, TacticCalc):
-            args["calc"] = tactic.step
         elif isinstance(tactic, TacticExpr):
             args["expr"] = tactic.expr
         elif isinstance(tactic, TacticDraft):
             args["draft"] = tactic.expr
+        elif isinstance(tactic, TacticMode):
+            args["mode"] = tactic.serial()
         else:
             raise RuntimeError(f"Invalid tactic type: {tactic}")
         result = await self.run_async('goal.tactic', args)
         messages = result.get("messages")
         if "error" in result:
             raise ServerError(result)
-        if "goals" not in result:
-            raise TacticFailure(messages)
         if "parseError" in result:
             raise TacticFailure(result)
+        if "goals" not in result:
+            raise TacticFailure(messages)
         if result["hasSorry"]:
             raise TacticFailure(["Tactic generated sorry"] + messages)
         if result["hasUnsafe"]:
@@ -281,36 +282,6 @@ class Server:
         return GoalState.parse(result, messages, self.to_remove_goal_states)
 
     goal_tactic = to_sync(goal_tactic_async)
-
-    async def goal_conv_begin_async(self, state: GoalState, goal_id: int) -> GoalState:
-        """
-        Start conversion tactic mode on one goal
-        """
-        result = await self.run_async('goal.tactic', {"stateId": state.state_id, "goalId": goal_id, "conv": True})
-        if "error" in result:
-            raise ServerError(result)
-        if "tacticErrors" in result:
-            raise ServerError(result)
-        if "parseError" in result:
-            raise ServerError(result)
-        return GoalState.parse(result, [], self.to_remove_goal_states)
-
-    goal_conv_begin = to_sync(goal_conv_begin_async)
-
-    async def goal_conv_end_async(self, state: GoalState) -> GoalState:
-        """
-        Exit conversion tactic mode on all goals
-        """
-        result = await self.run_async('goal.tactic', {"stateId": state.state_id, "goalId": 0, "conv": False})
-        if "error" in result:
-            raise ServerError(result)
-        if "tacticErrors" in result:
-            raise ServerError(result)
-        if "parseError" in result:
-            raise ServerError(result)
-        return GoalState.parse(result, [], self.to_remove_goal_states)
-
-    goal_conv_end = to_sync(goal_conv_end_async)
 
     async def goal_continue_async(self, target: GoalState, branch: GoalState) -> GoalState:
         """
@@ -585,7 +556,7 @@ class TestServer(unittest.TestCase):
         """
         NOTE: Update this after upstream updates.
         """
-        self.assertEqual(get_version(), "0.3.2")
+        self.assertEqual(get_version(), "0.3.3")
 
     def test_server_init_del(self):
         import warnings
@@ -611,7 +582,7 @@ class TestServer(unittest.TestCase):
         state0 = server.goal_start("forall (p q: Prop), Or p q -> Or q p")
         self.assertEqual(len(server.to_remove_goal_states), 0)
         self.assertEqual(state0.state_id, 0)
-        state1 = server.goal_tactic(state0, goal_id=0, tactic="intro a")
+        state1 = server.goal_tactic(state0, tactic="intro a")
         self.assertEqual(state1.state_id, 1)
         self.assertEqual(state1.goals, [Goal(
             "_uniq.11",
@@ -637,7 +608,7 @@ class TestServer(unittest.TestCase):
         state0 = server.goal_start("forall (p: Prop), p -> p")
         e = server.goal_root(state0)
         self.assertEqual(e, None)
-        state1 = server.goal_tactic(state0, goal_id=0, tactic="exact fun z p => p")
+        state1 = server.goal_tactic(state0, tactic="exact fun z p => p")
         e = server.goal_root(state1)
         self.assertEqual(e, "fun z p => p")
 
@@ -646,7 +617,7 @@ class TestServer(unittest.TestCase):
         state0 = server.goal_start("forall (p q: Prop), Or p q -> Or q p")
         self.assertEqual(len(server.to_remove_goal_states), 0)
         self.assertEqual(state0.state_id, 0)
-        state1 = server.goal_tactic(state0, goal_id=0, tactic="intro a b h")
+        state1 = server.goal_tactic(state0, tactic="intro a b h")
         self.assertEqual(state1.state_id, 1)
         self.assertEqual(state1.goals, [Goal(
             "_uniq.17",
@@ -658,7 +629,7 @@ class TestServer(unittest.TestCase):
             target="b ∨ a",
             name=None,
         )])
-        state2 = server.goal_tactic(state1, goal_id=0, tactic="cases h")
+        state2 = server.goal_tactic(state1, tactic="cases h")
         self.assertEqual(state2.goals, [
             Goal(
                 "_uniq.61",
@@ -681,8 +652,8 @@ class TestServer(unittest.TestCase):
                 name="inr",
             ),
         ])
-        state3 = server.goal_tactic(state2, goal_id=1, tactic="apply Or.inl")
-        state4 = server.goal_tactic(state3, goal_id=0, tactic="assumption")
+        state3 = server.goal_tactic(state2, tactic="apply Or.inl", site=Site(goal_id=1))
+        state4 = server.goal_tactic(state3, tactic="assumption")
         self.assertEqual(state4.goals, [
             Goal(
                 "_uniq.61",
@@ -699,7 +670,7 @@ class TestServer(unittest.TestCase):
     def test_have(self):
         server = Server()
         state0 = server.goal_start("1 + 1 = 2")
-        state1 = server.goal_tactic(state0, goal_id=0, tactic=TacticHave(branch="2 = 1 + 1", binder_name="h"))
+        state1 = server.goal_tactic(state0, tactic=TacticHave(branch="2 = 1 + 1", binder_name="h"))
         self.assertEqual(state1.goals, [
             Goal(
                 "_uniq.187",
@@ -716,8 +687,7 @@ class TestServer(unittest.TestCase):
         server = Server()
         state0 = server.goal_start("1 + 1 = 2")
         state1 = server.goal_tactic(
-            state0, goal_id=0,
-            tactic=TacticLet(branch="2 = 1 + 1", binder_name="h"))
+            state0, tactic=TacticLet(branch="2 = 1 + 1", binder_name="h"))
         self.assertEqual(state1.goals, [
             Goal(
                 "_uniq.187",
@@ -741,8 +711,9 @@ class TestServer(unittest.TestCase):
             Variable(name="b", t="Nat"),
             Variable(name="h", t="b = 2"),
         ]
-        state1 = server.goal_tactic(state0, goal_id=0, tactic="intro a b h")
-        state2 = server.goal_tactic(state1, goal_id=0, tactic=TacticCalc("1 + a + 1 = a + 1 + 1"))
+        state1 = server.goal_tactic(state0, "intro a b h")
+        state1b = server.goal_tactic(state1, TacticMode.CALC)
+        state2 = server.goal_tactic(state1b, "1 + a + 1 = a + 1 + 1")
         self.assertEqual(state2.goals, [
             Goal(
                 "_uniq.363",
@@ -754,25 +725,34 @@ class TestServer(unittest.TestCase):
                 "_uniq.382",
                 variables,
                 target="a + 1 + 1 = a + b",
+                mode=TacticMode.CALC,
             ),
         ])
-        state_c1 = server.goal_conv_begin(state2, goal_id=0)
-        state_c2 = server.goal_tactic(state_c1, goal_id=0, tactic="rhs")
-        state_c3 = server.goal_tactic(state_c2, goal_id=0, tactic="rw [Nat.add_comm]")
-        state_c4 = server.goal_conv_end(state_c3)
-        state_c5 = server.goal_tactic(state_c4, goal_id=0, tactic="rfl")
+        state_c1 = server.goal_tactic(state2, TacticMode.CONV)
+        state_c2 = server.goal_tactic(state_c1, "rhs")
+        state_c3 = server.goal_tactic(state_c2, "rw [Nat.add_comm]")
+        state_c4 = server.goal_tactic(state_c3, TacticMode.TACTIC)
+        #state_c4b = server.goal_resume(state_c4, [state2.goals[0]])
+        state_c5 = server.goal_tactic(state_c4, "rfl")
         self.assertTrue(state_c5.is_solved)
 
-        state3 = server.goal_tactic(state2, goal_id=1, tactic=TacticCalc("_ = a + 2"))
-        state4 = server.goal_tactic(state3, goal_id=0, tactic="rw [Nat.add_assoc]")
+        state3 = server.goal_tactic(state2, "_ = a + 2", site=Site(1))
+        state4 = server.goal_tactic(state3, "rw [Nat.add_assoc]")
         self.assertTrue(state4.is_solved)
+
+    def test_dependent_mvars(self):
+        server = Server(options={"printDependentMVars": True})
+        state = server.goal_start("∃ (x : Nat), x + 1 = 0")
+        state = server.goal_tactic(state, "apply Exists.intro")
+        self.assertEqual(state.goals[0].sibling_dep, {1})
+        self.assertEqual(state.goals[1].sibling_dep, set())
 
     def test_load_header(self):
         server = Server(imports=[])
         server.load_header("import Init\nopen Nat")
         state0 = server.goal_start("forall (n : Nat), n + 1 = n.succ")
-        state1 = server.goal_tactic(state0, goal_id=0, tactic="intro")
-        state2 = server.goal_tactic(state1, goal_id=0, tactic="apply add_one")
+        state1 = server.goal_tactic(state0, "intro")
+        state2 = server.goal_tactic(state1, "apply add_one")
         self.assertTrue(state2.is_solved)
 
     def test_load_sorry(self):
@@ -787,11 +767,11 @@ class TestServer(unittest.TestCase):
                 target="p → p",
             ),
         ])
-        state1 = server.goal_tactic(state0, goal_id=0, tactic="intro h")
-        state2 = server.goal_tactic(state1, goal_id=0, tactic="exact h")
+        state1 = server.goal_tactic(state0, tactic="intro h")
+        state2 = server.goal_tactic(state1, tactic="exact h")
         self.assertTrue(state2.is_solved)
 
-        state1b = server.goal_tactic(state0, goal_id=0, tactic=TacticDraft("by\nhave h1 : Or p p := sorry\nsorry"))
+        state1b = server.goal_tactic(state0, tactic=TacticDraft("by\nhave h1 : Or p p := sorry\nsorry"))
         self.assertEqual(state1b.goals, [
             Goal(
                 "_uniq.17",

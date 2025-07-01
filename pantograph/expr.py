@@ -3,6 +3,7 @@ Data structuers for expressions and goals
 """
 from dataclasses import dataclass, field
 from typing import Optional, TypeAlias
+from enum import Enum
 
 Expr: TypeAlias = str
 
@@ -11,6 +12,26 @@ def parse_expr(payload: dict) -> Expr:
     :meta private:
     """
     return payload["pp"]
+
+class TacticMode(Enum):
+    """
+    Current execution mode
+    """
+    TACTIC = 1
+    CONV = 2
+    CALC = 3
+
+    @staticmethod
+    def parse(payload: str):
+        match payload:
+            case "tactic": return TacticMode.TACTIC
+            case "conv": return TacticMode.CONV
+            case "calc": return TacticMode.CALC
+    def serial(self):
+        match self:
+            case TacticMode.TACTIC: return "tactic"
+            case TacticMode.CONV: return "conv"
+            case TacticMode.CALC: return "calc"
 
 @dataclass(frozen=True)
 class Variable:
@@ -42,9 +63,9 @@ class Goal:
     id: str
     variables: list[Variable]
     target: Expr
-    sibling_dep: Optional[list[int]] = field(default_factory=lambda: None)
+    sibling_dep: Optional[set[int]] = field(default_factory=lambda: None)
     name: Optional[str] = None
-    is_conversion: bool = False
+    mode: TacticMode = TacticMode.TACTIC
 
     @staticmethod
     def sentence(target: Expr):
@@ -59,16 +80,26 @@ class Goal:
         name = payload.get("userName")
         variables = [Variable.parse(v) for v in payload["vars"]]
         target = parse_expr(payload["target"])
-        is_conversion = payload["isConversion"]
+        mode = TacticMode.parse(payload["fragment"])
 
-        dependents = payload["target"].get("dependentMVars")
-        sibling_dep = [sibling_map[d] for d in dependents if d in sibling_map] if dependents else None
+        sibling_dep = None
+        for e in [payload["target"]] \
+                + [v["type"] for v in payload["vars"]] \
+                + [v["value"] for v in payload["vars"] if "value" in v]:
+            dependents = e.get("dependentMVars")
+            if dependents is None:
+                continue
+            deps = [sibling_map[d] for d in dependents if d in sibling_map]
+            if sibling_dep:
+                sibling_dep = { *sibling_dep, *deps }
+            else:
+                sibling_dep = { *deps }
 
-        return Goal(id, variables, target, sibling_dep, name, is_conversion)
+        return Goal(id, variables, target, sibling_dep, name, mode)
 
     def __str__(self):
         head = f"{self.name}\n" if self.name else ""
-        front = "|" if self.is_conversion else "⊢"
+        front = "|" if self.mode == TacticMode.CONV else "⊢"
         return head +\
             "\n".join(str(v) for v in self.variables) +\
             f"\n{front} {self.target}"
@@ -110,6 +141,22 @@ class GoalState:
         return "\n".join([str(g) for g in self.goals])
 
 @dataclass(frozen=True)
+class Site:
+    """
+    Acting area of a tactic
+    """
+    goal_id: Optional[int] = None
+    auto_resume: Optional[bool] = None
+
+    def serial(self) -> dict:
+        result = {}
+        if self.goal_id is not None:
+            result["goalId"] = self.goal_id
+        if self.auto_resume is not None:
+            result["autoResume"] = self.auto_resume
+        return result
+
+@dataclass(frozen=True)
 class TacticHave:
     """
     The `have` tactic, equivalent to
@@ -130,16 +177,6 @@ class TacticLet:
     branch: str
     binder_name: Optional[str] = None
 @dataclass(frozen=True)
-class TacticCalc:
-    """
-    The `calc` tactic, equivalent to
-    ```lean
-    calc {step} := ...
-    ```
-    You can use `_` in the step.
-    """
-    step: str
-@dataclass(frozen=True)
 class TacticExpr:
     """
     Assigns an expression to the current goal
@@ -152,4 +189,4 @@ class TacticDraft:
     """
     expr: str
 
-Tactic: TypeAlias = str | TacticHave | TacticLet | TacticCalc | TacticExpr | TacticDraft
+Tactic: TypeAlias = str | TacticHave | TacticLet | TacticExpr | TacticDraft | TacticMode

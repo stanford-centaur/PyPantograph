@@ -7,7 +7,7 @@ from pantograph.expr import TacticHave
 if __name__ == '__main__':
     server = Server(imports=['Init'])
     state0 = server.goal_start("1 = 0")
-    state1 = server.goal_tactic(state0, goal_id=0, tactic=TacticHave("1 = 0"))
+    state1 = server.goal_tactic(state0, tactic=TacticHave("1 = 0"))
     print(state1)
-    state1b = server.goal_tactic(state1, goal_id=0, tactic="apply?")
+    state1b = server.goal_tactic(state1, tactic="apply?")
     print(state1b)

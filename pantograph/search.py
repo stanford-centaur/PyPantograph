@@ -6,7 +6,7 @@ from typing import Optional, List
 import collections, unittest
 from math import log, sqrt
 from pantograph.server import Server, TacticFailure, ServerError
-from pantograph.expr import Expr, Tactic, GoalState
+from pantograph.expr import Expr, Tactic, GoalState, Site
 
 
 @dataclass
@@ -155,7 +155,7 @@ class Agent:
                 goal_state = search_state.goal_state
                 if verbose:
                     print(f"{goal_state.state_id}.{goal_id}: {tactic} on {goal_state.goals[goal_id]}")
-                next_goal_state = server.goal_tactic(goal_state, goal_id, tactic)
+                next_goal_state = server.goal_tactic(goal_state, tactic, site=Site(goal_id, auto_resume=False))
                 # Generate priorities for the next goal state
                 priorities = [0.0 for _ in next_goal_state.goals] \
                     if len(next_goal_state.goals) <= 1 else \
@@ -296,7 +296,7 @@ class MCTSAgent(Agent):
                 state = search_state.goal_state
                 if verbose:
                     print(f"{state.state_id}.{goal_id}: {tactic} on {search_state.goal_state.goals[goal_id]}")
-                next_goal_state = server.goal_tactic(search_state.goal_state, goal_id, tactic)
+                next_goal_state = server.goal_tactic(goal_state, tactic, site=Site(goal_id, auto_resume=False))
                 # Generate priorities for the next goal state
                 priorities = [0.0 for _ in next_goal_state.goals] \
                     if len(next_goal_state.goals) <= 1 else \
