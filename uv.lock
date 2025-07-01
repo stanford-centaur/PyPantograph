@@ -1,0 +1,7 @@
+version = 1
+requires-python = ">=3.9.0"
+
+[[package]]
+name = "pantograph"
+version = "0.3.3"
+source = { editable = "." }

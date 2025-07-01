@@ -1,18 +1,26 @@
-[tool.poetry]
+[project]
 name = "pantograph"
-version = "0.3.0"
+version = "0.3.3"
 description = "A machine-to-machine interaction system for Lean"
-authors = ["Leni Aniva <aniva@stanford.edu>", "contributors"]
 license = "Apache-2.0"
 readme = "README.md"
+authors = [
+    {name = "Leni Aniva", email = "aniva@stanford.edu"},
+    {name = "contributors"}
+]
+requires-python = ">=3.9.0"
+dependencies = []
 
+[build-system]
+requires = ["poetry-core>=2,<3"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.poetry]
 include = [
     { path = "pantograph/pantograph-repl", format = ["sdist", "wheel"] },
     { path = "pantograph/lean-toolchain", format = ["sdist", "wheel"] },
+    { path = "src", format = ["sdist", "wheel"] },
 ]
-
-[tool.poetry.dependencies]
-python = ">=3.9.0"
 
 [tool.poetry.build]
 generate-setup-file = false
@@ -23,7 +31,3 @@ optional = true
 [tool.poetry.group.doc.dependencies]
 notebook = "^7.2.1"
 jupyter-book = "^1.0.3"
-
-[build-system]
-requires = ["poetry-core"]
-build-backend = "poetry.core.masonry.api"

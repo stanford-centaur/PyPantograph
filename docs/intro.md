@@ -2,15 +2,14 @@
 
 This is Pantograph, an machine-to-machine interaction interface for Lean 4.
 Its main purpose is to train and evaluate theorem proving agents. The main
-features are:
-1. Interfacing via the Python library, REPL, or C Library
-2. A mixture of expression-based and tactic-based proofs
-3. Pantograph has been designed with facilitating search in mind. A theorem
-   proving agent can simultaneously explore multiple branches of the proof.
-4. Handling of metavariable coupling
-5. Reading/Adding symbols from the environment
-6. Extraction of tactic training data
-7. Support for drafting
+features of Pantograph are:
+
+1. Writing mixed expression and tactic style proofs
+2. Exposing the minimum amount of information for a search agent
+3. Handling of metavariable coupling
+4. Reading/Adding symbols from the environment
+5. Extraction of tactic training data
+6. Drafting incomplete proofs
 
 ## Name
 
@@ -27,11 +26,11 @@ The name Pantograph is a pun. It means two things
 The Lean 4 interface is not conducive to search. Readers familiar with Coq may
 know that the Coq Serapi was superseded by CoqLSP. In the opinion of the
 authors, this is a mistake. An interface conducive for human operators to write
-proofs is often not an interface conductive to search.
+proofs is often not an interface conductive to machine learning agents for
+searching.
 
-Almost all of Pantograph's business logic is written in Lean, and Pantograph
-achieves tighter coupling between the data extraction and proof search
-components.
+All of Pantograph's business logic is written in Lean, allowing coupling between
+the data extraction and proof search components.
 
 ## Caveats and Limitations
 
@@ -46,18 +45,16 @@ differently from Lean in some times, but never at the sacrifice of soundness.
 - When Lean LSP says "unresolved goals", that means a proof cannot finish where
   it is supposed to finish at the end of a `by` block. Pantograph will raise the
   error in this case, since it indicates the termination of a proof search branch.
-- `pick_goal` or `swap` will not work since they run contrary to tree search
-  paradigms. However, if there are tactics which perform non-trivial operations
-  to multiple goals at the same time, this constrain could potentially be
-  relaxed at a cost of great bookkeeping overhead to the user.
 
 Pantograph cannot perform things that are inherently constrained by Lean. These
 include:
 
 - If a tactic loses track of metavariables, it will not be caught until the end
   of the proof search. This is a bug in the tactic itself.
-- Timeouts for executing tactics is not available. Maybe this will change in the
-  future.
+- Lean's concurrency model is coöperative, which means a tactic is responsible
+  for checking a cancellation flag if it runs for a long time. Pantograph's
+  built-in timeout feature requires such behaviour. A tactic which hangs without
+  checking the flag cannot be timeouted.
 - Interceptions of parsing errors generally cannot be turned into goals (e.g.
   `def mystery : Nat := :=`) due to Lean's parsing system.
 

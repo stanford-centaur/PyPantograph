@@ -39,20 +39,20 @@ class CompilationUnit:
     new_constants: Optional[list[str]] = None
 
     @staticmethod
-    def parse(payload: dict, goal_state_sentinel=None):
+    def parse(payload: dict, goal_state_sentinel=None, invocations=None):
         i_begin = payload["boundary"][0]
         i_end = payload["boundary"][1]
         messages = payload["messages"]
 
-        if (invocation_payload := payload.get("invocations")) is not None:
+        if invocations:
             invocations = [
-                TacticInvocation.parse(i) for i in invocation_payload
+                TacticInvocation.parse(i) for i in invocations
             ]
         else:
             invocations = None
 
         if (state_id := payload.get("goalStateId")) is not None:
-            goal_state = GoalState.parse_inner(int(state_id), payload["goals"], goal_state_sentinel)
+            goal_state = GoalState.parse_inner(int(state_id), payload["goals"], [], goal_state_sentinel)
             goal_src_boundaries = payload["goalSrcBoundaries"]
         else:
             goal_state = None

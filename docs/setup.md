@@ -1,26 +1,25 @@
 # Setup
 
-Install `poetry`. Then, run
+1. Install `uv`
+2. Clone this repository with submodules:
 ```sh
-poetry build
+git clone --recurse-submodules <repo-path>
+```
+3. Install `elan` and `lake`: See [Lean Manual](https://docs.lean-lang.org/lean4/doc/setup.html)
+4. Execute
+```sh
+cd <repo-path>
+uv sync
 ```
 
-This builds a wheel of Pantograph in `dist` which can then be installed. For
+`uv build` builds a wheel of Pantograph in `dist` which can then be installed. For
 example, a downstream project could have this line in its `pyproject.toml`
 
 ```toml
 pantograph = { file = "path/to/wheel/dist/pantograph-0.3.0-cp312-cp312-manylinux_2_40_x86_64.whl" }
 ```
 
-To run the examples and experiments, setup a poetry shell:
-```sh
-poetry install
-poetry shell
-```
-This drops the current shell into an environment where the development packages are available.
-
-All interactions with Lean pass through the `Server` class. Create an instance
-with
+All interactions with Lean pass through the `Server` class. Create an instance of Pantograph using
 ```python
 from pantograph import Server
 server = Server()

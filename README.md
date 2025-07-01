@@ -4,24 +4,35 @@ A Machine-to-Machine Interaction System for Lean 4.
 
 ## Installation
 
-1. Install `poetry`
-2. Clone this repository with submodules:
+1. Install `uv`
+2. Install `elan`: See [Lean Manual](https://docs.lean-lang.org/lean4/doc/setup.html)
+
+### Install as a project dependency
+
+3. Add the package to your project:
+```sh
+uv add git+https://github.com/stanford-centaur/PyPantograph
+uv sync
+```
+
+### Build wheels from source
+
+3. Clone this repository with submodules:
 ```sh
 git clone --recurse-submodules <repo-path>
 ```
-3. Install `elan` and `lake`: See [Lean Manual](https://docs.lean-lang.org/lean4/doc/setup.html)
 4. Execute
 ```sh
-poetry build
-poetry install
+cd <repo-path>
+uv build
 ```
+5. Built wheels can be found at `dist/*.whl`
 
 ## Documentation
 
 Build the documentations by
 ```sh
-poetry install --only doc
-poetry run jupyter-book build docs
+uvx --with notebook jupyter-book build docs
 ```
 Then serve
 ```sh
