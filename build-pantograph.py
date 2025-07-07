@@ -23,6 +23,3 @@ os.chmod(path_executable, os.stat(path_executable).st_mode | stat.S_IEXEC)
 
 # -- Copy the Lean toolchain file to the specified path
 shutil.copyfile(PATH_PANTOGRAPH / "lean-toolchain", PATH_PY / "lean-toolchain")
-
-# -- Remove src directory (it's not needed anymore)
-shutil.rmtree(PATH_PANTOGRAPH)
