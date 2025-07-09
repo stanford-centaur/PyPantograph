@@ -556,7 +556,7 @@ class TestServer(unittest.TestCase):
         """
         NOTE: Update this after upstream updates.
         """
-        self.assertEqual(get_version(), "0.3.3")
+        self.assertEqual(get_version(), "0.3.4")
 
     def test_server_init_del(self):
         import warnings
@@ -716,13 +716,13 @@ class TestServer(unittest.TestCase):
         state2 = server.goal_tactic(state1b, "1 + a + 1 = a + 1 + 1")
         self.assertEqual(state2.goals, [
             Goal(
-                "_uniq.363",
+                "_uniq.381",
                 variables,
                 target="1 + a + 1 = a + 1 + 1",
                 name='calc',
             ),
             Goal(
-                "_uniq.382",
+                "_uniq.400",
                 variables,
                 target="a + 1 + 1 = a + b",
                 mode=TacticMode.CALC,
