@@ -406,15 +406,19 @@ class Server:
 
     load_definitions = to_sync(load_definitions_async)
 
-    async def check_compile_async(self, code: str):
+    async def check_compile_async(
+            self,
+            code: str,
+            new_constants: bool=False,
+            read_header: bool=False):
         """
         Check if some Lean code compiles
         """
         result = await self.run_async('frontend.process', {
             'file': code,
             "sorrys": False,
-            "newConstants": False,
-            "readHeader": False,
+            "newConstants": new_constants,
+            "readHeader": read_header,
             "inheritEnv": False,
             "typeErrorsAsGoals": False,
         })
@@ -798,6 +802,8 @@ class TestServer(unittest.TestCase):
             "a proposition\n"
             "  p → p : Prop\n"
         ])
+        unit, = server.check_compile("import Lean\nexample (p: Prop) : p -> p := id", read_header=True)
+        self.assertEqual(unit.messages, [])
 
     def test_env_add_inspect(self):
         server = Server()
