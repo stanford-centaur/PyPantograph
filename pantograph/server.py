@@ -265,6 +265,7 @@ class Server:
         else:
             raise RuntimeError(f"Invalid tactic type: {tactic}")
         result = await self.run_async('goal.tactic', args)
+        nextStateId = result.get("nextStateId")
         if "error" in result:
             raise ServerError(result)
         if "parseError" in result:
@@ -273,10 +274,14 @@ class Server:
         messages = result.get("messages")
         if "goals" not in result:
             raise TacticFailure([Message.parse(m) for m in messages])
+
         if result["hasSorry"]:
+            await self.run_async('goal.delete', {'stateIds': [nextStateId]})
             raise TacticFailure("Tactic generated sorry", messages)
         if result["hasUnsafe"]:
+            await self.run_async('goal.delete', {'stateIds': [nextStateId]})
             raise TacticFailure("Tactic generated unsafe", messages)
+
         return GoalState.parse(result, messages, self.to_remove_goal_states)
 
     goal_tactic = to_sync(goal_tactic_async)
