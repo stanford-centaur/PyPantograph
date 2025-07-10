@@ -21,7 +21,9 @@ class Position:
     column: int
 
     @staticmethod
-    def parse(d: dict) -> Self:
+    def parse(d: Optional[dict]) -> Optional[Self]:
+        if d is None:
+            return None
         return Position(line=d["line"], column=d["column"])
 
 @dataclass(frozen=True)
@@ -41,7 +43,7 @@ class Message:
         return Message(
             severity=Severity[d["severity"].upper()],
             pos=Position.parse(d["pos"]),
-            pos_end=Position.parse(d["endPos"]) if "endPos" in d else None,
+            pos_end=Position.parse(d.get("endPos")),
             kind=kind,
             data=d["data"],
         )
