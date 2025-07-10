@@ -6,6 +6,12 @@ import json, unittest, os, asyncio, tempfile
 from typing import Union, List, Optional, Dict, List, Any
 from pathlib import Path
 
+from pantograph.message import (
+    Severity,
+    Message,
+    TacticFailure,
+    ServerError,
+)
 from pantograph.expr import (
     parse_expr,
     Expr,
@@ -29,15 +35,6 @@ from pantograph.utils import (
 )
 from pantograph.data import CompilationUnit
 
-
-class TacticFailure(Exception):
-    """
-    Indicates a tactic failed to execute
-    """
-class ServerError(Exception):
-    """
-    Indicates a logical error in the server.
-    """
 
 class Server:
     """
@@ -268,17 +265,18 @@ class Server:
         else:
             raise RuntimeError(f"Invalid tactic type: {tactic}")
         result = await self.run_async('goal.tactic', args)
-        messages = result.get("messages")
         if "error" in result:
             raise ServerError(result)
         if "parseError" in result:
             raise TacticFailure(result)
+
+        messages = result.get("messages")
         if "goals" not in result:
-            raise TacticFailure(messages)
+            raise TacticFailure([Message.parse(m) for m in messages])
         if result["hasSorry"]:
-            raise TacticFailure(["Tactic generated sorry"] + messages)
+            raise TacticFailure("Tactic generated sorry", messages)
         if result["hasUnsafe"]:
-            raise TacticFailure(["Tactic generated unsafe"] + messages)
+            raise TacticFailure("Tactic generated unsafe", messages)
         return GoalState.parse(result, messages, self.to_remove_goal_states)
 
     goal_tactic = to_sync(goal_tactic_async)
@@ -797,10 +795,12 @@ class TestServer(unittest.TestCase):
         unit, = server.check_compile("example (p: Prop) : p -> p := id")
         self.assertEqual(unit.messages, [])
         unit, = server.check_compile("example (p: Prop) : p -> p := 1")
-        self.assertEqual(unit.messages, [
-            "<anonymous>:1:30: error: numerals are data in Lean, but the expected type is "
+        self.assertEqual(unit.messages, [Message(
+            data=
+            "numerals are data in Lean, but the expected type is "
             "a proposition\n"
-            "  p → p : Prop\n"
+            "  p → p : Prop"
+        )
         ])
         unit, = server.check_compile("import Lean\nexample (p: Prop) : p -> p := id", read_header=True)
         self.assertEqual(unit.messages, [])
