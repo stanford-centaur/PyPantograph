@@ -1,11 +1,16 @@
 from dataclasses import dataclass
 from enum import Enum
 from typing import Optional, Self
+import unittest
 
 class Severity(Enum):
     INFORMATION = 1
     WARNING = 2
     ERROR = 3
+
+    def __str__(self):
+        cls = self.__class__.__name__
+        return super(Severity, self).__str__()[len(cls)+1:].lower()
 
 @dataclass(frozen=True)
 class Message:
@@ -34,3 +39,11 @@ class ServerError(Exception):
     """
     Indicates a logical error in the server.
     """
+
+class TestMessage(unittest.TestCase):
+
+    def test_message(self):
+        self.assertEqual(str(Severity.ERROR), "error")
+
+if __name__ == '__main__':
+    unittest.main()
