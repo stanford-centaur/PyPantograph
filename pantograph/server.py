@@ -7,6 +7,7 @@ from typing import Union, List, Optional, Dict, List, Any
 from pathlib import Path
 
 from pantograph.message import (
+    Position,
     Severity,
     Message,
     TacticFailure,
@@ -801,6 +802,8 @@ class TestServer(unittest.TestCase):
         self.assertEqual(unit.messages, [])
         unit, = server.check_compile("example (p: Prop) : p -> p := 1")
         self.assertEqual(unit.messages, [Message(
+            pos=Position(1, 30),
+            pos_end=Position(1, 31),
             data=
             "numerals are data in Lean, but the expected type is "
             "a proposition\n"

@@ -13,8 +13,22 @@ class Severity(Enum):
         return super(Severity, self).__str__()[len(cls)+1:].lower()
 
 @dataclass(frozen=True)
+class Position:
+    """
+    Position in a file
+    """
+    line: int
+    column: int
+
+    @staticmethod
+    def parse(d: dict) -> Self:
+        return Position(line=d["line"], column=d["column"])
+
+@dataclass(frozen=True)
 class Message:
     data: str
+    pos: Position
+    pos_end: Optional[Position] = None
     severity: Severity = Severity.ERROR
     kind: Optional[str] = None
 
@@ -26,6 +40,8 @@ class Message:
         kind = None if d["kind"] == "[anonymous]" else d["kind"]
         return Message(
             severity=Severity[d["severity"].upper()],
+            pos=Position.parse(d["pos"]),
+            pos_end=Position.parse(d["endPos"]) if "endPos" in d else None,
             kind=kind,
             data=d["data"],
         )
