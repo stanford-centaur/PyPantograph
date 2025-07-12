@@ -1,6 +1,6 @@
 [project]
 name = "pantograph"
-version = "0.3.3"
+version = "0.3.4"
 description = "A machine-to-machine interaction system for Lean"
 license = "Apache-2.0"
 readme = "README.md"
@@ -8,7 +8,7 @@ authors = [
     {name = "Leni Aniva", email = "aniva@stanford.edu"},
     {name = "contributors"}
 ]
-requires-python = ">=3.9.0"
+requires-python = ">=3.11.0"
 dependencies = []
 [dependency-groups]
 doc = [

@@ -1,9 +1,11 @@
 """
 Data structuers for expressions and goals
 """
+from pantograph.message import Message
+
 from dataclasses import dataclass, field
-from typing import Optional, TypeAlias
 from enum import Enum
+from typing import Optional, TypeAlias
 
 Expr: TypeAlias = str
 
@@ -21,12 +23,6 @@ class TacticMode(Enum):
     CONV = 2
     CALC = 3
 
-    @staticmethod
-    def parse(payload: str):
-        match payload:
-            case "tactic": return TacticMode.TACTIC
-            case "conv": return TacticMode.CONV
-            case "calc": return TacticMode.CALC
     def serial(self):
         match self:
             case TacticMode.TACTIC: return "tactic"
@@ -80,7 +76,7 @@ class Goal:
         name = payload.get("userName")
         variables = [Variable.parse(v) for v in payload["vars"]]
         target = parse_expr(payload["target"])
-        mode = TacticMode.parse(payload["fragment"])
+        mode = TacticMode[payload["fragment"].upper()]
 
         sibling_dep = None
         for e in [payload["target"]] \
@@ -108,12 +104,17 @@ class Goal:
 class GoalState:
     state_id: int
     goals: list[Goal]
-    messages: list[str]
+    messages: list[Message]
 
+    # For tracking memory usage
     _sentinel: list[int]
 
     def __del__(self):
         self._sentinel.append(self.state_id)
+    def __repr__(self):
+        cls = self.__class__.__name__
+        messages = f"messages={repr(self.messages)}, " if self.messages else ""
+        return f"{cls}(#{self.state_id}, goals={repr(self.goals)}{messages}, _sentinel=#{len(self._sentinel)}"
 
     @property
     def is_solved(self) -> bool:
@@ -125,13 +126,14 @@ class GoalState:
         return not self.goals
 
     @staticmethod
-    def parse_inner(state_id: int, goals: list, messages: list[str], _sentinel: list[int]):
+    def parse_inner(state_id: int, goals: list, messages: list[dict], _sentinel: list[int]):
         assert _sentinel is not None
         goal_names = { g["name"]: i for i, g in enumerate(goals) }
         goals = [Goal.parse(g, goal_names) for g in goals]
+        messages = [Message.parse(m) for m in messages]
         return GoalState(state_id, goals, messages, _sentinel)
     @staticmethod
-    def parse(payload: dict, messages: list[str], _sentinel: list[int]):
+    def parse(payload: dict, messages: list[dict], _sentinel: list[int]):
         return GoalState.parse_inner(payload["nextStateId"], payload["goals"], messages, _sentinel)
 
     def __str__(self):

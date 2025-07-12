@@ -1,6 +1,9 @@
+from pantograph.message import Message
+from pantograph.expr import GoalState
+
 from typing import Optional, Tuple
 from dataclasses import dataclass, field
-from pantograph.expr import GoalState
+from enum import Enum
 
 @dataclass(frozen=True)
 class TacticInvocation:
@@ -29,7 +32,7 @@ class CompilationUnit:
     i_begin: int
     i_end: int
 
-    messages: list[str] = field(default_factory=list)
+    messages: list[Message] = field(default_factory=lambda: [])
 
     invocations: Optional[list[TacticInvocation]] = None
     # If `goal_state` is none, maybe error has occurred. See `messages`
@@ -42,7 +45,7 @@ class CompilationUnit:
     def parse(payload: dict, goal_state_sentinel=None, invocations=None):
         i_begin = payload["boundary"][0]
         i_end = payload["boundary"][1]
-        messages = payload["messages"]
+        messages = [Message.parse(m) for m in payload["messages"]]
 
         if invocations:
             invocations = [
