@@ -564,7 +564,7 @@ class TestServer(unittest.TestCase):
         """
         NOTE: Update this after upstream updates.
         """
-        self.assertEqual(get_version(), "0.3.4")
+        self.assertEqual(get_version(), "0.3.5")
 
     def test_server_init_del(self):
         import warnings
