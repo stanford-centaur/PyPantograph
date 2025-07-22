@@ -321,6 +321,117 @@ class Server:
         return GoalState.parse(result, self.to_remove_goal_states)
     goal_resume = to_sync(goal_resume_async)
 
+    async def env_add_async(self, name: str, levels: list[str], t: Expr, v: Expr, is_theorem: bool = True):
+        """
+        Adds a definition to the environment.
+
+        NOTE: May have to accept additional parameters if the definition
+        contains universe mvars.
+        """
+        result = await self.run_async('env.add', {
+            "name": name,
+            "levels": levels,
+            "type": t,
+            "value": v,
+            "isTheorem": is_theorem,
+            "typeErrorsAsGoals": False,
+        })
+        if "error" in result:
+            raise ServerError(result["desc"])
+
+    env_add = to_sync(env_add_async)
+
+    async def env_inspect_async(
+            self,
+            name: str,
+            print_value: bool = False,
+            print_dependency: bool = False) -> Dict:
+        """
+        Print the type and dependencies of a constant.
+        """
+        result = await self.run_async('env.inspect', {
+            "name": name,
+            "value": print_value,
+            "dependency": print_dependency,
+            "source": True,
+        })
+        if "error" in result:
+            raise ServerError(result["desc"])
+        return result
+    env_inspect = to_sync(env_inspect_async)
+
+    async def env_module_read_async(self, module: str) -> dict:
+        """
+        Reads the content from one Lean module including what constants are in
+        it.
+        """
+        result = await self.run_async('env.module_read', {
+            "module": module
+        })
+        if "error" in result:
+            raise ServerError(result["desc"])
+        return result
+    env_module_read = to_sync(env_module_read_async)
+
+    async def env_save_async(self, path: str):
+        """
+        Save the current environment to a file
+        """
+        result = await self.run_async('env.save', {
+            "path": path,
+        })
+        if "error" in result:
+            raise ServerError(result["desc"])
+    env_save = to_sync(env_save_async)
+
+    async def env_load_async(self, path: str):
+        """
+        Load the current environment from a file
+        """
+        result = await self.run_async('env.load', {
+            "path": path,
+        })
+        if "error" in result:
+            raise ServerError(result["desc"])
+
+    env_load = to_sync(env_load_async)
+
+    async def goal_save_async(self, goal_state: GoalState, path: str):
+        """
+        Save a goal state to a file
+        """
+        result = await self.run_async('goal.save', {
+            "id": goal_state.state_id,
+            "path": path,
+        })
+        if "error" in result:
+            raise ServerError(result["desc"])
+
+    goal_save = to_sync(goal_save_async)
+
+    async def goal_load_async(self, path: str) -> GoalState:
+        """
+        Load a goal state from a file.
+
+        User is responsible for keeping track of the environment.
+        """
+        result = await self.run_async('goal.load', {
+            "path": path,
+        })
+        if "error" in result:
+            raise ServerError(result["desc"])
+        state_id = result['id']
+        result = await self.run_async('goal.print', {
+            'stateId': state_id,
+            'goals': True,
+        })
+        if "error" in result:
+            raise ServerError(result["desc"])
+        return GoalState.parse_inner(state_id, result['goals'], [], self.to_remove_goal_states)
+
+    goal_load = to_sync(goal_load_async)
+
+
     async def tactic_invocations_async(self, file_name: Union[str, Path]) -> List[CompilationUnit]:
         """
         Collect tactic invocation points in file, and return them.
@@ -436,116 +547,20 @@ class Server:
 
     check_compile = to_sync(check_compile_async)
 
-    async def env_add_async(self, name: str, levels: list[str], t: Expr, v: Expr, is_theorem: bool = True):
-        """
-        Adds a definition to the environment.
-
-        NOTE: May have to accept additional parameters if the definition
-        contains universe mvars.
-        """
-        result = await self.run_async('env.add', {
-            "name": name,
-            "levels": levels,
-            "type": t,
-            "value": v,
-            "isTheorem": is_theorem,
-            "typeErrorsAsGoals": False,
-        })
-        if "error" in result:
-            raise ServerError(result["desc"])
-
-    env_add = to_sync(env_add_async)
-
-    async def env_inspect_async(
+    async def refactor_async(
             self,
-            name: str,
-            print_value: bool = False,
-            print_dependency: bool = False) -> Dict:
+            code: str):
         """
-        Print the type and dependencies of a constant.
+        Mystery function
         """
-        result = await self.run_async('env.inspect', {
-            "name": name,
-            "value": print_value,
-            "dependency": print_dependency,
-            "source": True,
+        result = await self.run_async('frontend.refactor', {
+            'file': code,
         })
         if "error" in result:
-            raise ServerError(result["desc"])
-        return result
-    env_inspect = to_sync(env_inspect_async)
+            raise ServerError(result)
+        return result["code"]
 
-    async def env_module_read_async(self, module: str) -> dict:
-        """
-        Reads the content from one Lean module including what constants are in
-        it.
-        """
-        result = await self.run_async('env.module_read', {
-            "module": module
-        })
-        if "error" in result:
-            raise ServerError(result["desc"])
-        return result
-    env_module_read = to_sync(env_module_read_async)
-
-    async def env_save_async(self, path: str):
-        """
-        Save the current environment to a file
-        """
-        result = await self.run_async('env.save', {
-            "path": path,
-        })
-        if "error" in result:
-            raise ServerError(result["desc"])
-    env_save = to_sync(env_save_async)
-
-    async def env_load_async(self, path: str):
-        """
-        Load the current environment from a file
-        """
-        result = await self.run_async('env.load', {
-            "path": path,
-        })
-        if "error" in result:
-            raise ServerError(result["desc"])
-
-    env_load = to_sync(env_load_async)
-
-    async def goal_save_async(self, goal_state: GoalState, path: str):
-        """
-        Save a goal state to a file
-        """
-        result = await self.run_async('goal.save', {
-            "id": goal_state.state_id,
-            "path": path,
-        })
-        if "error" in result:
-            raise ServerError(result["desc"])
-
-    goal_save = to_sync(goal_save_async)
-
-    async def goal_load_async(self, path: str) -> GoalState:
-        """
-        Load a goal state from a file.
-
-        User is responsible for keeping track of the environment.
-        """
-        result = await self.run_async('goal.load', {
-            "path": path,
-        })
-        if "error" in result:
-            raise ServerError(result["desc"])
-        state_id = result['id']
-        result = await self.run_async('goal.print', {
-            'stateId': state_id,
-            'goals': True,
-        })
-        if "error" in result:
-            raise ServerError(result["desc"])
-        return GoalState.parse_inner(state_id, result['goals'], [], self.to_remove_goal_states)
-
-    goal_load = to_sync(goal_load_async)
-
+    refactor = to_sync(refactor_async)
 
 def get_version() -> str:
     """
