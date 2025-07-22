@@ -547,11 +547,14 @@ class Server:
 
     check_compile = to_sync(check_compile_async)
 
-    async def refactor_async(
+    async def refactor_search_target_async(
             self,
             code: str):
         """
-        Mystery function
+        Combine multiple `sorry`s into one `sorry` using subtyping. It only
+        supports flat dependency structures.
+
+        This is experimental.
         """
         result = await self.run_async('frontend.refactor', {
             'file': code,
@@ -560,7 +563,7 @@ class Server:
             raise ServerError(result)
         return result["file"]
 
-    refactor = to_sync(refactor_async)
+    refactor_search_target = to_sync(refactor_search_target_async)
 
 def get_version() -> str:
     """
@@ -865,7 +868,7 @@ class TestServer(unittest.TestCase):
         inspect_result = server.env_inspect(name="mystery")
         self.assertEqual(inspect_result['type'], {'pp': 'Nat → Nat'})
 
-    def test_refactor(self):
+    def test_refactor_search_target(self):
         code = """
         def f : Nat -> Nat := sorry
         theorem property (n : Nat) : f n = n := sorry"""
@@ -873,7 +876,7 @@ class TestServer(unittest.TestCase):
 def f_composite : { f : Nat → Nat // ∀ (n : Nat), f n = n } :=
   sorry"""
         server = Server()
-        result = server.refactor(code)
+        result = server.refactor_search_target(code)
         self.assertEqual(result, target)
 
 if __name__ == '__main__':
