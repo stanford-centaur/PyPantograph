@@ -770,6 +770,35 @@ class TestServer(unittest.TestCase):
         self.assertEqual(state.goals[0].sibling_dep, {1})
         self.assertEqual(state.goals[1].sibling_dep, set())
 
+    def test_env_add_inspect(self):
+        server = Server()
+        server.env_add(
+            name="mystery",
+            levels=[],
+            t="forall (n: Nat), Nat",
+            v="fun (n: Nat) => n + 1",
+            is_theorem=False,
+        )
+        inspect_result = server.env_inspect(name="mystery")
+        self.assertEqual(inspect_result['type'], {'pp': 'Nat → Nat'})
+
+    def test_goal_state_pickling(self):
+        import tempfile
+        server = Server()
+        state0 = server.goal_start("forall (p q: Prop), Or p q -> Or q p")
+        with tempfile.TemporaryDirectory() as td:
+            path = td + "/goal-state.pickle"
+            server.goal_save(state0, path)
+            state0b = server.goal_load(path)
+            self.assertEqual(state0b.goals, [
+                Goal(
+                    "_uniq.9",
+                    variables=[
+                    ],
+                    target="∀ (p q : Prop), p ∨ q → q ∨ p",
+                )
+            ])
+
     def test_load_header(self):
         server = Server(imports=[])
         server.load_header("import Init\nopen Nat")
@@ -828,18 +857,6 @@ class TestServer(unittest.TestCase):
         unit, = server.check_compile("import Lean\nexample (p: Prop) : p -> p := id", read_header=True)
         self.assertEqual(unit.messages, [])
 
-    def test_env_add_inspect(self):
-        server = Server()
-        server.env_add(
-            name="mystery",
-            levels=[],
-            t="forall (n: Nat), Nat",
-            v="fun (n: Nat) => n + 1",
-            is_theorem=False,
-        )
-        inspect_result = server.env_inspect(name="mystery")
-        self.assertEqual(inspect_result['type'], {'pp': 'Nat → Nat'})
-
     def test_load_definitions(self):
         server = Server()
         server.load_definitions(
@@ -848,23 +865,16 @@ class TestServer(unittest.TestCase):
         inspect_result = server.env_inspect(name="mystery")
         self.assertEqual(inspect_result['type'], {'pp': 'Nat → Nat'})
 
-    def test_goal_state_pickling(self):
-        import tempfile
+    def test_refactor(self):
+        code = """
+        def f : Nat -> Nat := sorry
+        theorem property (n : Nat) : f n = n := sorry"""
+        target = """
+def f_composite : { f : Nat → Nat // ∀ (n : Nat), f n = n } :=
+  sorry"""
         server = Server()
-        state0 = server.goal_start("forall (p q: Prop), Or p q -> Or q p")
-        with tempfile.TemporaryDirectory() as td:
-            path = td + "/goal-state.pickle"
-            server.goal_save(state0, path)
-            state0b = server.goal_load(path)
-            self.assertEqual(state0b.goals, [
-                Goal(
-                    "_uniq.9",
-                    variables=[
-                    ],
-                    target="∀ (p q : Prop), p ∨ q → q ∨ p",
-                )
-            ])
-
+        result = server.refactor(code)
+        self.assertEqual(result, target)
 
 if __name__ == '__main__':
     unittest.main()
