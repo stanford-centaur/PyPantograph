@@ -558,7 +558,7 @@ class Server:
         })
         if "error" in result:
             raise ServerError(result)
-        return result["code"]
+        return result["file"]
 
     refactor = to_sync(refactor_async)
 
