@@ -34,9 +34,6 @@ class Message:
     severity: Severity = Severity.ERROR
     kind: Optional[str] = None
 
-    def __str__(self):
-        return f"{self.kind}/{self.severity}: {self.data}"
-
     @staticmethod
     def parse(d: dict) -> Self:
         kind = None if d["kind"] == "[anonymous]" else d["kind"]
@@ -84,6 +81,13 @@ class TestMessage(unittest.TestCase):
             severity=Severity.WARNING,
         )
         self.assertEqual(str(m), "12:34-56:78: warning: hi")
+
+        m = Message(
+            data="hi",
+            pos=Position(0, 0),
+            severity=Severity.ERROR,
+        )
+        self.assertEqual(str(m), "0:0: error: hi")
 
 if __name__ == '__main__':
     unittest.main()
