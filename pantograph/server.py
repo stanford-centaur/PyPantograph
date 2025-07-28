@@ -3,7 +3,7 @@ Class which manages a Pantograph instance. All calls to the kernel uses this
 interface.
 """
 import json, unittest, os, asyncio, tempfile
-from typing import Union, List, Optional, Dict, List, Any
+from typing import Union, List, Optional, Dict, List, Any, Tuple
 from pathlib import Path
 
 from pantograph.message import (
@@ -11,6 +11,7 @@ from pantograph.message import (
     Severity,
     Message,
     TacticFailure,
+    ParseError,
     ServerError,
 )
 from pantograph.expr import (
@@ -373,6 +374,21 @@ class Server:
         return result
     env_module_read = to_sync(env_module_read_async)
 
+    async def env_parse_async(self, input: str, category: str="tactic") -> Tuple[str, str]:
+        result = await self.run_async('env.parse', {
+            "input": input,
+            "category": category,
+        })
+        if "error" in result:
+            if result['error'] == 'parse':
+                raise ParseError(result["desc"])
+            raise ServerError(result["desc"])
+        pos = result["pos"]
+        s = input.encode()
+        return s[:pos].decode(), s[pos:].decode()
+
+    env_parse = to_sync(env_parse_async)
+
     async def env_save_async(self, path: str):
         """
         Save the current environment to a file
@@ -430,7 +446,6 @@ class Server:
         return GoalState.parse_inner(state_id, result['goals'], [], self.to_remove_goal_states)
 
     goal_load = to_sync(goal_load_async)
-
 
     async def tactic_invocations_async(self, file_name: Union[str, Path]) -> List[CompilationUnit]:
         """
@@ -784,6 +799,12 @@ class TestServer(unittest.TestCase):
         )
         inspect_result = server.env_inspect(name="mystery")
         self.assertEqual(inspect_result['type'], {'pp': 'Nat → Nat'})
+
+    def test_env_parse(self):
+        server = Server()
+        head, tail = server.env_parse("intro x; apply a", category="tactic")
+        self.assertEqual(head, "intro x")
+        self.assertEqual(tail, "; apply a")
 
     def test_goal_state_pickling(self):
         import tempfile
