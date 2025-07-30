@@ -34,9 +34,6 @@ class Message:
     severity: Severity = Severity.ERROR
     kind: Optional[str] = None
 
-    def __str__(self):
-        return f"{self.kind}/{self.severity}: {self.data}"
-
     @staticmethod
     def parse(d: dict) -> Self:
         kind = None if d["kind"] == "[anonymous]" else d["kind"]
@@ -48,10 +45,28 @@ class Message:
             data=d["data"],
         )
 
+    def __str__(self) -> str:
+        if self.pos_end is not None:
+            pos_end = f"-{self.pos_end.line}:{self.pos_end.column}"
+        else:
+            pos_end = ""
+        match self.severity:
+            case Severity.INFORMATION:
+                prefix = ""
+            case Severity.WARNING:
+                prefix = "warning: "
+            case Severity.ERROR:
+                prefix = "error: "
+        return f"{self.pos.line}:{self.pos.column}{pos_end}: {prefix}{self.data}"
+
 
 class TacticFailure(Exception):
     """
     Indicates a tactic failed to execute
+    """
+class ParseError(Exception):
+    """
+    Indicates a logical error in the server.
     """
 class ServerError(Exception):
     """
@@ -60,8 +75,23 @@ class ServerError(Exception):
 
 class TestMessage(unittest.TestCase):
 
-    def test_message(self):
+    def test_severity(self):
         self.assertEqual(str(Severity.ERROR), "error")
+    def test_message(self):
+        m = Message(
+            data="hi",
+            pos=Position(12, 34),
+            pos_end=Position(56, 78),
+            severity=Severity.WARNING,
+        )
+        self.assertEqual(str(m), "12:34-56:78: warning: hi")
+
+        m = Message(
+            data="hi",
+            pos=Position(0, 0),
+            severity=Severity.ERROR,
+        )
+        self.assertEqual(str(m), "0:0: error: hi")
 
 if __name__ == '__main__':
     unittest.main()

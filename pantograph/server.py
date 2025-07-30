@@ -3,7 +3,7 @@ Class which manages a Pantograph instance. All calls to the kernel uses this
 interface.
 """
 import json, unittest, os, asyncio, tempfile
-from typing import Union, List, Optional, Dict, List, Any
+from typing import Union, List, Optional, Dict, List, Any, Tuple
 from pathlib import Path
 
 from pantograph.message import (
@@ -11,6 +11,7 @@ from pantograph.message import (
     Severity,
     Message,
     TacticFailure,
+    ParseError,
     ServerError,
 )
 from pantograph.expr import (
@@ -321,6 +322,131 @@ class Server:
         return GoalState.parse(result, self.to_remove_goal_states)
     goal_resume = to_sync(goal_resume_async)
 
+    async def env_add_async(self, name: str, levels: list[str], t: Expr, v: Expr, is_theorem: bool = True):
+        """
+        Adds a definition to the environment.
+
+        NOTE: May have to accept additional parameters if the definition
+        contains universe mvars.
+        """
+        result = await self.run_async('env.add', {
+            "name": name,
+            "levels": levels,
+            "type": t,
+            "value": v,
+            "isTheorem": is_theorem,
+            "typeErrorsAsGoals": False,
+        })
+        if "error" in result:
+            raise ServerError(result["desc"])
+
+    env_add = to_sync(env_add_async)
+
+    async def env_inspect_async(
+            self,
+            name: str,
+            print_value: bool = False,
+            print_dependency: bool = False) -> Dict:
+        """
+        Print the type and dependencies of a constant.
+        """
+        result = await self.run_async('env.inspect', {
+            "name": name,
+            "value": print_value,
+            "dependency": print_dependency,
+            "source": True,
+        })
+        if "error" in result:
+            raise ServerError(result["desc"])
+        return result
+    env_inspect = to_sync(env_inspect_async)
+
+    async def env_module_read_async(self, module: str) -> dict:
+        """
+        Reads the content from one Lean module including what constants are in
+        it.
+        """
+        result = await self.run_async('env.module_read', {
+            "module": module
+        })
+        if "error" in result:
+            raise ServerError(result["desc"])
+        return result
+    env_module_read = to_sync(env_module_read_async)
+
+    async def env_parse_async(self, input: str, category: str="tactic") -> Tuple[str, str]:
+        result = await self.run_async('env.parse', {
+            "input": input,
+            "category": category,
+        })
+        if "error" in result:
+            if result['error'] == 'parse':
+                raise ParseError(result["desc"])
+            raise ServerError(result["desc"])
+        pos = result["pos"]
+        s = input.encode()
+        return s[:pos].decode(), s[pos:].decode()
+
+    env_parse = to_sync(env_parse_async)
+
+    async def env_save_async(self, path: str):
+        """
+        Save the current environment to a file
+        """
+        result = await self.run_async('env.save', {
+            "path": path,
+        })
+        if "error" in result:
+            raise ServerError(result["desc"])
+    env_save = to_sync(env_save_async)
+
+    async def env_load_async(self, path: str):
+        """
+        Load the current environment from a file
+        """
+        result = await self.run_async('env.load', {
+            "path": path,
+        })
+        if "error" in result:
+            raise ServerError(result["desc"])
+
+    env_load = to_sync(env_load_async)
+
+    async def goal_save_async(self, goal_state: GoalState, path: str):
+        """
+        Save a goal state to a file
+        """
+        result = await self.run_async('goal.save', {
+            "id": goal_state.state_id,
+            "path": path,
+        })
+        if "error" in result:
+            raise ServerError(result["desc"])
+
+    goal_save = to_sync(goal_save_async)
+
+    async def goal_load_async(self, path: str) -> GoalState:
+        """
+        Load a goal state from a file.
+
+        User is responsible for keeping track of the environment.
+        """
+        result = await self.run_async('goal.load', {
+            "path": path,
+        })
+        if "error" in result:
+            raise ServerError(result["desc"])
+        state_id = result['id']
+        result = await self.run_async('goal.print', {
+            'stateId': state_id,
+            'goals': True,
+        })
+        if "error" in result:
+            raise ServerError(result["desc"])
+        return GoalState.parse_inner(state_id, result['goals'], [], self.to_remove_goal_states)
+
+    goal_load = to_sync(goal_load_async)
+
     async def tactic_invocations_async(self, file_name: Union[str, Path]) -> List[CompilationUnit]:
         """
         Collect tactic invocation points in file, and return them.
@@ -436,116 +562,23 @@ class Server:
 
     check_compile = to_sync(check_compile_async)
 
-    async def env_add_async(self, name: str, levels: list[str], t: Expr, v: Expr, is_theorem: bool = True):
-        """
-        Adds a definition to the environment.
-
-        NOTE: May have to accept additional parameters if the definition
-        contains universe mvars.
-        """
-        result = await self.run_async('env.add', {
-            "name": name,
-            "levels": levels,
-            "type": t,
-            "value": v,
-            "isTheorem": is_theorem,
-            "typeErrorsAsGoals": False,
-        })
-        if "error" in result:
-            raise ServerError(result["desc"])
-
-    env_add = to_sync(env_add_async)
-
-    async def env_inspect_async(
+    async def refactor_search_target_async(
             self,
-            name: str,
-            print_value: bool = False,
-            print_dependency: bool = False) -> Dict:
+            code: str):
         """
-        Print the type and dependencies of a constant.
+        Combine multiple `sorry`s into one `sorry` using subtyping. It only
+        supports flat dependency structures.
+
+        This is experimental.
         """
-        result = await self.run_async('env.inspect', {
-            "name": name,
-            "value": print_value,
-            "dependency": print_dependency,
-            "source": True,
+        result = await self.run_async('frontend.refactor', {
+            'file': code,
         })
         if "error" in result:
-            raise ServerError(result["desc"])
-        return result
-    env_inspect = to_sync(env_inspect_async)
+            raise ServerError(result)
+        return result["file"]
 
-    async def env_module_read_async(self, module: str) -> dict:
-        """
-        Reads the content from one Lean module including what constants are in
-        it.
-        """
-        result = await self.run_async('env.module_read', {
-            "module": module
-        })
-        if "error" in result:
-            raise ServerError(result["desc"])
-        return result
-    env_module_read = to_sync(env_module_read_async)
-
-    async def env_save_async(self, path: str):
-        """
-        Save the current environment to a file
-        """
-        result = await self.run_async('env.save', {
-            "path": path,
-        })
-        if "error" in result:
-            raise ServerError(result["desc"])
-    env_save = to_sync(env_save_async)
-
-    async def env_load_async(self, path: str):
-        """
-        Load the current environment from a file
-        """
-        result = await self.run_async('env.load', {
-            "path": path,
-        })
-        if "error" in result:
-            raise ServerError(result["desc"])
-
-    env_load = to_sync(env_load_async)
-
-    async def goal_save_async(self, goal_state: GoalState, path: str):
-        """
-        Save a goal state to a file
-        """
-        result = await self.run_async('goal.save', {
-            "id": goal_state.state_id,
-            "path": path,
-        })
-        if "error" in result:
-            raise ServerError(result["desc"])
-
-    goal_save = to_sync(goal_save_async)
-
-    async def goal_load_async(self, path: str) -> GoalState:
-        """
-        Load a goal state from a file.
-
-        User is responsible for keeping track of the environment.
-        """
-        result = await self.run_async('goal.load', {
-            "path": path,
-        })
-        if "error" in result:
-            raise ServerError(result["desc"])
-        state_id = result['id']
-        result = await self.run_async('goal.print', {
-            'stateId': state_id,
-            'goals': True,
-        })
-        if "error" in result:
-            raise ServerError(result["desc"])
-        return GoalState.parse_inner(state_id, result['goals'], [], self.to_remove_goal_states)
-
-    goal_load = to_sync(goal_load_async)
-
+    refactor_search_target = to_sync(refactor_search_target_async)
 
 def get_version() -> str:
     """
@@ -681,12 +714,12 @@ class TestServer(unittest.TestCase):
         state1 = server.goal_tactic(state0, tactic=TacticHave(branch="2 = 1 + 1", binder_name="h"))
         self.assertEqual(state1.goals, [
             Goal(
-                "_uniq.187",
+                "_uniq.266",
                 variables=[],
                 target="2 = 1 + 1",
             ),
             Goal(
-                "_uniq.189",
+                "_uniq.268",
                 variables=[Variable(name="h", t="2 = 1 + 1")],
                 target="1 + 1 = 2",
             ),
@@ -698,13 +731,13 @@ class TestServer(unittest.TestCase):
             state0, tactic=TacticLet(branch="2 = 1 + 1", binder_name="h"))
         self.assertEqual(state1.goals, [
             Goal(
-                "_uniq.187",
+                "_uniq.266",
                 variables=[],
                 name="h",
                 target="2 = 1 + 1",
             ),
             Goal(
-                "_uniq.189",
+                "_uniq.268",
                 variables=[Variable(name="h", t="2 = 1 + 1", v="?h")],
                 target="1 + 1 = 2",
             ),
@@ -754,6 +787,41 @@ class TestServer(unittest.TestCase):
         state = server.goal_tactic(state, "apply Exists.intro")
         self.assertEqual(state.goals[0].sibling_dep, {1})
         self.assertEqual(state.goals[1].sibling_dep, set())
+
+    def test_env_add_inspect(self):
+        server = Server()
+        server.env_add(
+            name="mystery",
+            levels=[],
+            t="forall (n: Nat), Nat",
+            v="fun (n: Nat) => n + 1",
+            is_theorem=False,
+        )
+        inspect_result = server.env_inspect(name="mystery")
+        self.assertEqual(inspect_result['type'], {'pp': 'Nat → Nat'})
+
+    def test_env_parse(self):
+        server = Server()
+        head, tail = server.env_parse("intro x; apply a", category="tactic")
+        self.assertEqual(head, "intro x")
+        self.assertEqual(tail, "; apply a")
+
+    def test_goal_state_pickling(self):
+        import tempfile
+        server = Server()
+        state0 = server.goal_start("forall (p q: Prop), Or p q -> Or q p")
+        with tempfile.TemporaryDirectory() as td:
+            path = td + "/goal-state.pickle"
+            server.goal_save(state0, path)
+            state0b = server.goal_load(path)
+            self.assertEqual(state0b.goals, [
+                Goal(
+                    "_uniq.9",
+                    variables=[
+                    ],
+                    target="∀ (p q : Prop), p ∨ q → q ∨ p",
+                )
+            ])
 
     def test_load_header(self):
         server = Server(imports=[])
@@ -813,18 +881,6 @@ class TestServer(unittest.TestCase):
         unit, = server.check_compile("import Lean\nexample (p: Prop) : p -> p := id", read_header=True)
         self.assertEqual(unit.messages, [])
 
-    def test_env_add_inspect(self):
-        server = Server()
-        server.env_add(
-            name="mystery",
-            levels=[],
-            t="forall (n: Nat), Nat",
-            v="fun (n: Nat) => n + 1",
-            is_theorem=False,
-        )
-        inspect_result = server.env_inspect(name="mystery")
-        self.assertEqual(inspect_result['type'], {'pp': 'Nat → Nat'})
-
     def test_load_definitions(self):
         server = Server()
         server.load_definitions(
@@ -833,23 +889,16 @@ class TestServer(unittest.TestCase):
         inspect_result = server.env_inspect(name="mystery")
         self.assertEqual(inspect_result['type'], {'pp': 'Nat → Nat'})
 
-    def test_goal_state_pickling(self):
-        import tempfile
+    def test_refactor_search_target(self):
+        code = """
+        def f : Nat -> Nat := sorry
+        theorem property (n : Nat) : f n = n := sorry"""
+        target = """
+def f_composite : { f : Nat → Nat // ∀ (n : Nat), f n = n } :=
+  sorry"""
         server = Server()
-        state0 = server.goal_start("forall (p q: Prop), Or p q -> Or q p")
-        with tempfile.TemporaryDirectory() as td:
-            path = td + "/goal-state.pickle"
-            server.goal_save(state0, path)
-            state0b = server.goal_load(path)
-            self.assertEqual(state0b.goals, [
-                Goal(
-                    "_uniq.9",
-                    variables=[
-                    ],
-                    target="∀ (p q : Prop), p ∨ q → q ∨ p",
-                )
-            ])
-
+        result = server.refactor_search_target(code)
+        self.assertEqual(result, target)
 
 if __name__ == '__main__':
     unittest.main()
