@@ -564,7 +564,8 @@ class Server:
 
     async def refactor_search_target_async(
             self,
-            code: str):
+            code: str,
+            core_options: list[str] = []):
         """
         Combine multiple `sorry`s into one `sorry` using subtyping. It only
         supports flat dependency structures.
@@ -573,6 +574,7 @@ class Server:
         """
         result = await self.run_async('frontend.refactor', {
             'file': code,
+            'coreOptions': core_options,
         })
         if "error" in result:
             raise ServerError(result)
