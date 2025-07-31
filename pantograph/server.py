@@ -55,7 +55,7 @@ class Server:
             # Options supplied to the Lean core
             core_options: List[str]=[],
             timeout: int=60,
-            maxread: int=1000000,
+            buffer_limit: Optional[int]=1000000,
             _sync_init: bool=True):
         """
         options: Given to Pantograph
@@ -69,7 +69,7 @@ class Server:
         if _sync_init and project_path and not lean_path:
             lean_path = get_lean_path(project_path)
         self.lean_path = lean_path
-        self.maxread = maxread
+        self.buffer_limit = buffer_limit
         self.proc_path = _get_proc_path()
 
         self.options = options
@@ -93,7 +93,7 @@ class Server:
             options: Dict[str, Any]={},
             core_options: List[str]=[],
             timeout: int=120,
-            maxread: int=1000000,
+            buffer_limit: Optional[int]=1000000,
             start: bool=True) -> 'Server':
         """
         timeout: Amount of time to wait for execution (in seconds)
@@ -106,7 +106,7 @@ class Server:
             options,
             core_options,
             timeout,
-            maxread,
+            buffer_limit,
             _sync_init=False
         )
         if project_path and not lean_path:
@@ -147,9 +147,10 @@ class Server:
             *self.args,
             stdin=asyncio.subprocess.PIPE,
             stdout=asyncio.subprocess.PIPE,
-            stderr=asyncio.subprocess.PIPE,
+            #stderr=asyncio.subprocess.PIPE,
             cwd=self.project_path,
             env=env,
+            limit=self.buffer_limit,
         )
         await self.proc.stdin.drain()
         try:
