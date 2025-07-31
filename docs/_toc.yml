@@ -10,7 +10,8 @@ parts:
   - file: drafting
 - caption: API Documentation
   chapters:
+  - file: api-message
   - file: api-server
-  - file: api-search
   - file: api-expr
   - file: api-data
+  - file: api-search
