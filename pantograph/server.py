@@ -564,7 +564,8 @@ class Server:
 
     async def refactor_search_target_async(
             self,
-            code: str):
+            code: str,
+            core_options: list[str] = []):
         """
         Combine multiple `sorry`s into one `sorry` using subtyping. It only
         supports flat dependency structures.
@@ -573,6 +574,7 @@ class Server:
         """
         result = await self.run_async('frontend.refactor', {
             'file': code,
+            'coreOptions': core_options,
         })
         if "error" in result:
             raise ServerError(result)
@@ -714,12 +716,12 @@ class TestServer(unittest.TestCase):
         state1 = server.goal_tactic(state0, tactic=TacticHave(branch="2 = 1 + 1", binder_name="h"))
         self.assertEqual(state1.goals, [
             Goal(
-                "_uniq.266",
+                "_uniq.257",
                 variables=[],
                 target="2 = 1 + 1",
             ),
             Goal(
-                "_uniq.268",
+                "_uniq.259",
                 variables=[Variable(name="h", t="2 = 1 + 1")],
                 target="1 + 1 = 2",
             ),
@@ -731,13 +733,13 @@ class TestServer(unittest.TestCase):
             state0, tactic=TacticLet(branch="2 = 1 + 1", binder_name="h"))
         self.assertEqual(state1.goals, [
             Goal(
-                "_uniq.266",
+                "_uniq.257",
                 variables=[],
                 name="h",
                 target="2 = 1 + 1",
             ),
             Goal(
-                "_uniq.268",
+                "_uniq.259",
                 variables=[Variable(name="h", t="2 = 1 + 1", v="?h")],
                 target="1 + 1 = 2",
             ),
