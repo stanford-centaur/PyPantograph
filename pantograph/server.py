@@ -860,7 +860,7 @@ class TestServer(unittest.TestCase):
         state0 = unit.goal_state
         self.assertEqual(state0.goals, [
             Goal(
-                "_uniq.6",
+                "_uniq.3",
                 [Variable(name="p", t="Prop")],
                 target="p → p",
             ),
@@ -872,12 +872,12 @@ class TestServer(unittest.TestCase):
         state1b = server.goal_tactic(state0, tactic=TacticDraft("by\nhave h1 : Or p p := sorry\nsorry"))
         self.assertEqual(state1b.goals, [
             Goal(
-                "_uniq.17",
+                "_uniq.14",
                 [Variable(name="p", t="Prop")],
                 target="p ∨ p",
             ),
             Goal(
-                "_uniq.19",
+                "_uniq.16",
                 [
                     Variable(name="p", t="Prop"),
                     Variable(name="h1", t="p ∨ p"),
