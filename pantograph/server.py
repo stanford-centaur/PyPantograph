@@ -35,7 +35,7 @@ from pantograph.utils import (
     get_lean_path_async,
     get_lean_path,
 )
-from pantograph.data import CompilationUnit
+from pantograph.data import CompilationUnit, SearchTarget
 
 
 class Server:
@@ -563,6 +563,25 @@ class Server:
 
     check_compile = to_sync(check_compile_async)
 
+    async def distil_search_target_async(
+            self,
+            code: str):
+        """
+        Condense search target into goals
+        """
+        result = await self.run_async('frontend.distil', {
+            'file': code,
+        })
+        if "error" in result:
+            raise ServerError(result)
+        units = [
+            SearchTarget.parse(payload, goal_state_sentinel=self.to_remove_goal_states)
+            for payload in result['targets']
+        ]
+        return units
+
+    distil_search_target = to_sync(distil_search_target_async)
+
     async def refactor_search_target_async(
             self,
             code: str,
@@ -600,7 +619,7 @@ class TestServer(unittest.TestCase):
         """
         NOTE: Update this after upstream updates.
         """
-        self.assertEqual(get_version(), "0.3.5")
+        self.assertEqual(get_version(), "0.3.6")
 
     def test_server_init_del(self):
         import warnings
@@ -836,7 +855,7 @@ class TestServer(unittest.TestCase):
 
     def test_load_sorry(self):
         server = Server()
-        unit, = server.load_sorry("example (p: Prop): p → p := sorry")
+        unit, = server.load_sorry("theorem mystery (p: Prop) : p → p := sorry")
         self.assertIsNotNone(unit.goal_state, f"{unit.messages}")
         state0 = unit.goal_state
         self.assertEqual(state0.goals, [
@@ -891,6 +910,21 @@ class TestServer(unittest.TestCase):
         )
         inspect_result = server.env_inspect(name="mystery")
         self.assertEqual(inspect_result['type'], {'pp': 'Nat → Nat'})
+
+    def test_distil_search_target(self):
+        server = Server()
+        unit, = server.distil_search_target("theorem mystery (p: Prop) : p → p := sorry")
+        state0 = unit.goal_state
+        self.assertEqual(state0.goals, [
+            Goal(
+                "_uniq.1",
+                [],
+                target="∀ (p : Prop), p → p",
+            ),
+        ])
+        state1 = server.goal_tactic(state0, tactic="intro p h")
+        state2 = server.goal_tactic(state1, tactic="exact h")
+        self.assertTrue(state2.is_solved)
 
     def test_refactor_search_target(self):
         code = """

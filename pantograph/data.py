@@ -72,3 +72,16 @@ class CompilationUnit:
             goal_src_boundaries,
             new_constants
         )
+
+@dataclass(frozen=True)
+class SearchTarget:
+    goal_state: GoalState
+
+    @staticmethod
+    def parse(payload: dict, goal_state_sentinel=None):
+        state_id = payload.get("stateId")
+        goal_state = GoalState.parse_inner(int(state_id), payload["goals"], [], goal_state_sentinel)
+
+        return SearchTarget(
+            goal_state,
+        )
