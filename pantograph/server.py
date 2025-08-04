@@ -565,13 +565,15 @@ class Server:
 
     async def distil_search_target_async(
             self,
-            code: str):
+            code: str,
+            binderName: Optional[str]=None):
         """
         Condense search target into goals
         """
-        result = await self.run_async('frontend.distil', {
-            'file': code,
-        })
+        args = { "file": code }
+        if binderName is not None:
+            args["binderName"] = binderName
+        result = await self.run_async('frontend.distil', args)
         if "error" in result:
             raise ServerError(result)
         units = [
