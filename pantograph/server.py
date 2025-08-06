@@ -584,6 +584,17 @@ class Server:
 
     distil_search_target = to_sync(distil_search_target_async)
 
+    async def check_track_async(self, src: str, dst: str) -> Optional[str]:
+        """
+        Checks if `dst` file conforms to the specifications in `src`
+        """
+        result = await self.run_async('frontend.track', { "src": src, "dst": dst })
+        if "error" in result:
+            raise ServerError(result)
+        return result.get("failure")
+
+    check_track = to_sync(check_track_async)
+
     async def refactor_search_target_async(
             self,
             code: str,
@@ -927,6 +938,12 @@ class TestServer(unittest.TestCase):
         state1 = server.goal_tactic(state0, tactic="intro p h")
         state2 = server.goal_tactic(state1, tactic="exact h")
         self.assertTrue(state2.is_solved)
+
+    def test_check_track(self):
+        server = Server()
+        src = "def f : Nat -> Nat := sorry"
+        dst = "def f : Nat -> Nat := fun y => y + y"
+        self.assertEqual(server.check_track(src, dst), None)
 
     def test_refactor_search_target(self):
         code = """
