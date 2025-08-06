@@ -1,4 +1,4 @@
-from pantograph.message import Message
+from pantograph.message import Severity, Message
 from pantograph.expr import GoalState
 
 from typing import Optional, Tuple
@@ -71,4 +71,43 @@ class CompilationUnit:
             goal_state,
             goal_src_boundaries,
             new_constants
+        )
+
+@dataclass
+class CheckTrackResult:
+
+    src_messages : list[Message]
+    dst_messages : list[Message]
+    failure : Optional[str] = None
+
+    @property
+    def hasSrcError(self):
+        return any(m.severity == Severity.ERROR for m in self.src_messages)
+    @property
+    def hasDstError(self):
+        return any(m.severity == Severity.ERROR for m in self.dst_messages)
+    @property
+    def succeeded(self):
+        return not self.hasSrcError and not self.hasDstError and self.failure is None
+    @property
+    def feedback(self):
+        """
+        Feedback based on the dst
+        """
+        result = [str(s) for s in self.dst_messages]
+        if self.failure:
+            result.append(self.failure)
+        return result
+
+@dataclass(frozen=True)
+class SearchTarget:
+    goal_state: GoalState
+
+    @staticmethod
+    def parse(payload: dict, goal_state_sentinel=None):
+        state_id = payload.get("stateId")
+        goal_state = GoalState.parse_inner(int(state_id), payload["goals"], [], goal_state_sentinel)
+
+        return SearchTarget(
+            goal_state,
         )
