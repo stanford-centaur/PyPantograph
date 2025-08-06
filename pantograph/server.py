@@ -35,7 +35,11 @@ from pantograph.utils import (
     get_lean_path_async,
     get_lean_path,
 )
-from pantograph.data import CompilationUnit, SearchTarget
+from pantograph.data import (
+    CheckTrackResult,
+    CompilationUnit,
+    SearchTarget,
+)
 
 
 class Server:
@@ -584,14 +588,20 @@ class Server:
 
     distil_search_target = to_sync(distil_search_target_async)
 
-    async def check_track_async(self, src: str, dst: str) -> Optional[str]:
+    async def check_track_async(self, src: str, dst: str) -> CheckTrackResult:
         """
         Checks if `dst` file conforms to the specifications in `src`
         """
         result = await self.run_async('frontend.track', { "src": src, "dst": dst })
         if "error" in result:
             raise ServerError(result)
-        return result.get("failure")
+        src_messages = [Message.parse(d) for d in result["srcMessages"]]
+        dst_messages = [Message.parse(d) for d in result["dstMessages"]]
+        return CheckTrackResult(
+            src_messages,
+            dst_messages,
+            failure=result.get("failure"),
+        )
 
     check_track = to_sync(check_track_async)
 
@@ -943,7 +953,7 @@ class TestServer(unittest.TestCase):
         server = Server()
         src = "def f : Nat -> Nat := sorry"
         dst = "def f : Nat -> Nat := fun y => y + y"
-        self.assertEqual(server.check_track(src, dst), None)
+        self.assertTrue(server.check_track(src, dst).succeeded)
 
     def test_refactor_search_target(self):
         code = """
