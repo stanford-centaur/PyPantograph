@@ -35,7 +35,11 @@ from pantograph.utils import (
     get_lean_path_async,
     get_lean_path,
 )
-from pantograph.data import CompilationUnit
+from pantograph.data import (
+    CheckTrackResult,
+    CompilationUnit,
+    SearchTarget,
+)
 
 
 class Server:
@@ -55,7 +59,7 @@ class Server:
             # Options supplied to the Lean core
             core_options: List[str]=[],
             timeout: int=60,
-            maxread: int=1000000,
+            buffer_limit: Optional[int]=1000000,
             _sync_init: bool=True):
         """
         options: Given to Pantograph
@@ -69,7 +73,7 @@ class Server:
         if _sync_init and project_path and not lean_path:
             lean_path = get_lean_path(project_path)
         self.lean_path = lean_path
-        self.maxread = maxread
+        self.buffer_limit = buffer_limit
         self.proc_path = _get_proc_path()
 
         self.options = options
@@ -93,7 +97,7 @@ class Server:
             options: Dict[str, Any]={},
             core_options: List[str]=[],
             timeout: int=120,
-            maxread: int=1000000,
+            buffer_limit: Optional[int]=1000000,
             start: bool=True) -> 'Server':
         """
         timeout: Amount of time to wait for execution (in seconds)
@@ -106,7 +110,7 @@ class Server:
             options,
             core_options,
             timeout,
-            maxread,
+            buffer_limit,
             _sync_init=False
         )
         if project_path and not lean_path:
@@ -147,9 +151,10 @@ class Server:
             *self.args,
             stdin=asyncio.subprocess.PIPE,
             stdout=asyncio.subprocess.PIPE,
-            stderr=asyncio.subprocess.PIPE,
+            #stderr=asyncio.subprocess.PIPE,
             cwd=self.project_path,
             env=env,
+            limit=self.buffer_limit,
         )
         await self.proc.stdin.drain()
         try:
@@ -475,30 +480,6 @@ class Server:
 
     tactic_invocations = to_sync(tactic_invocations_async)
 
-    async def load_sorry_async(self, content: str) -> List[CompilationUnit]:
-        """
-        Executes the compiler on a Lean file. For each compilation unit, either
-        return the gathered `sorry` s, or a list of messages indicating error.
-        """
-        result = await self.run_async('frontend.process', {
-            'file': content,
-            "sorrys": True,
-            "newConstants": False,
-            "readHeader": False,
-            "inheritEnv": False,
-            "typeErrorsAsGoals": False,
-        })
-        if "error" in result:
-            raise ServerError(result)
-
-        units = [
-            CompilationUnit.parse(payload, goal_state_sentinel=self.to_remove_goal_states)
-            for payload in result['units']
-        ]
-        return units
-
-    load_sorry = to_sync(load_sorry_async)
-
     async def load_header_async(self, header: str):
         """
         Loads the environment from a header. Set `imports` to `[]` during
@@ -562,15 +543,55 @@ class Server:
 
     check_compile = to_sync(check_compile_async)
 
+    async def load_sorry_async(
+            self,
+            src: str,
+            binder_name: Optional[str]=None,
+            ignore_values: bool=True) -> list[SearchTarget]:
+        """
+        Condense search target into goals
+        """
+        args = { "file": src, "ignoreValues": ignore_values }
+        if binder_name is not None:
+            args["binderName"] = binder_name
+        result = await self.run_async('frontend.distil', args)
+        if "error" in result:
+            raise ServerError(result)
+        units = [
+            SearchTarget.parse(payload, goal_state_sentinel=self.to_remove_goal_states)
+            for payload in result['targets']
+        ]
+        return units
+
+    load_sorry = to_sync(load_sorry_async)
+
+    async def check_track_async(self, src: str, dst: str) -> CheckTrackResult:
+        """
+        Checks if `dst` file conforms to the specifications in `src`
+        """
+        result = await self.run_async('frontend.track', { "src": src, "dst": dst })
+        if "error" in result:
+            raise ServerError(result)
+        src_messages = [Message.parse(d) for d in result["srcMessages"]]
+        dst_messages = [Message.parse(d) for d in result["dstMessages"]]
+        return CheckTrackResult(
+            src_messages,
+            dst_messages,
+            failure=result.get("failure"),
+        )
+
+    check_track = to_sync(check_track_async)
+
     async def refactor_search_target_async(
             self,
             code: str,
-            core_options: list[str] = []):
+            core_options: list[str] = []) -> str:
         """
         Combine multiple `sorry`s into one `sorry` using subtyping. It only
         supports flat dependency structures.
 
-        This is experimental.
+        This feature is experimental and depends on the round-trip capabilities
+        of the delaborator.
         """
         result = await self.run_async('frontend.refactor', {
             'file': code,
@@ -599,7 +620,7 @@ class TestServer(unittest.TestCase):
         """
         NOTE: Update this after upstream updates.
         """
-        self.assertEqual(get_version(), "0.3.5")
+        self.assertEqual(get_version(), "0.3.6")
 
     def test_server_init_del(self):
         import warnings
@@ -833,39 +854,6 @@ class TestServer(unittest.TestCase):
         state2 = server.goal_tactic(state1, "apply add_one")
         self.assertTrue(state2.is_solved)
 
-    def test_load_sorry(self):
-        server = Server()
-        unit, = server.load_sorry("example (p: Prop): p → p := sorry")
-        self.assertIsNotNone(unit.goal_state, f"{unit.messages}")
-        state0 = unit.goal_state
-        self.assertEqual(state0.goals, [
-            Goal(
-                "_uniq.6",
-                [Variable(name="p", t="Prop")],
-                target="p → p",
-            ),
-        ])
-        state1 = server.goal_tactic(state0, tactic="intro h")
-        state2 = server.goal_tactic(state1, tactic="exact h")
-        self.assertTrue(state2.is_solved)
-
-        state1b = server.goal_tactic(state0, tactic=TacticDraft("by\nhave h1 : Or p p := sorry\nsorry"))
-        self.assertEqual(state1b.goals, [
-            Goal(
-                "_uniq.17",
-                [Variable(name="p", t="Prop")],
-                target="p ∨ p",
-            ),
-            Goal(
-                "_uniq.19",
-                [
-                    Variable(name="p", t="Prop"),
-                    Variable(name="h1", t="p ∨ p"),
-                ],
-                target="p → p",
-            ),
-        ])
-
     def test_check_compile(self):
         server = Server()
         unit, = server.check_compile("example (p: Prop) : p -> p := id")
@@ -890,6 +878,60 @@ class TestServer(unittest.TestCase):
         )
         inspect_result = server.env_inspect(name="mystery")
         self.assertEqual(inspect_result['type'], {'pp': 'Nat → Nat'})
+
+    def test_load_sorry(self):
+        server = Server()
+        unit, = server.load_sorry("theorem mystery (p: Prop) : p → p := sorry", ignore_values=False)
+        #self.assertIsNotNone(unit.goal_state, f"{unit.messages}")
+        state0 = unit.goal_state
+        self.assertEqual(state0.goals, [
+            Goal(
+                "_uniq.3",
+                [Variable(name="p", t="Prop")],
+                target="p → p",
+            ),
+        ])
+        state1 = server.goal_tactic(state0, tactic="intro h")
+        state2 = server.goal_tactic(state1, tactic="exact h")
+        self.assertTrue(state2.is_solved)
+
+        state1b = server.goal_tactic(state0, tactic=TacticDraft("by\nhave h1 : Or p p := sorry\nsorry"))
+        self.assertEqual(state1b.goals, [
+            Goal(
+                "_uniq.16",
+                [Variable(name="p", t="Prop")],
+                target="p ∨ p",
+            ),
+            Goal(
+                "_uniq.18",
+                [
+                    Variable(name="p", t="Prop"),
+                    Variable(name="h1", t="p ∨ p"),
+                ],
+                target="p → p",
+            ),
+        ])
+
+    def test_distil_search_target(self):
+        server = Server()
+        unit, = server.load_sorry("theorem mystery (p: Prop) : p → p := sorry")
+        state0 = unit.goal_state
+        self.assertEqual(state0.goals, [
+            Goal(
+                "_uniq.1",
+                [],
+                target="∀ (p : Prop), p → p",
+            ),
+        ])
+        state1 = server.goal_tactic(state0, tactic="intro p h")
+        state2 = server.goal_tactic(state1, tactic="exact h")
+        self.assertTrue(state2.is_solved)
+
+    def test_check_track(self):
+        server = Server()
+        src = "def f : Nat -> Nat := sorry"
+        dst = "def f : Nat -> Nat := fun y => y + y"
+        self.assertTrue(server.check_track(src, dst).succeeded)
 
     def test_refactor_search_target(self):
         code = """
