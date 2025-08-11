@@ -40,13 +40,13 @@ jobs:
 
     - name: Build documentations
       run: |
-        poetry run jupyter-book build docs
+        poetry run jupyter-book build doc
 
     # Upload the book's HTML as an artifact
     - name: Upload artifact
       uses: actions/upload-pages-artifact@v3
       with:
-        path: "docs/_build/html"
+        path: "doc/_build/html"
 
     # Deploy the book's HTML to GitHub Pages
     - name: Deploy to GitHub Pages
