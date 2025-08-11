@@ -6,8 +6,7 @@ parts:
   - file: setup
   - file: goal
   - file: agent-search
-  - file: data
-  - file: drafting
+  - file: frontend
 - caption: API Documentation
   chapters:
   - file: api-message
