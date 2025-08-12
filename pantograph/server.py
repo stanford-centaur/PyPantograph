@@ -130,9 +130,11 @@ class Server:
         pass #self._close()
 
     def _close(self):
-        if self.proc:
-            self.proc.terminate()
-            self.proc = None
+        if not self.proc:
+            return
+
+        self.proc.terminate()
+        self.proc = None
 
     def is_automatic(self):
         """
@@ -141,6 +143,9 @@ class Server:
         return self.options.get("automaticMode", True)
 
     async def restart_async(self):
+        """
+        Restart the server
+        """
         self._close()
         env = os.environ
         if self.lean_path:
@@ -181,13 +186,22 @@ class Server:
         command = f"{cmd} {s}\n"
         self.proc.stdin.write(command.encode())
         await self.proc.stdin.drain()
+        line = ""
         try:
             line = await asyncio.wait_for(self.proc.stdout.readline(), self.timeout)
+        except asyncio.TimeoutError as e:
+            self._close()
+            raise ServerError("Server reached timeout limit") from e
+
+        try:
             line = line.decode().strip()
             return json.loads(line)
-        except Exception as e:
+        except UnicodeDecodeError as e:
             self._close()
-            raise ServerError("Cannot decode Json object. A server error may have occurred.") from e
+            raise ServerError(f"Could not decode process output: {line}") from e
+        except json.JSONDecodeError as e:
+            self._close()
+            raise ServerError(f"Cannot decode Json object from: {line}") from e
 
     run = to_sync(run_async)
 
@@ -253,26 +267,27 @@ class Server:
         Execute a tactic on `goal_id` of `state`
         """
         args = {"stateId": state.state_id, **site.serial()}
-        if isinstance(tactic, str):
-            args["tactic"] = tactic
-        elif isinstance(tactic, TacticHave):
-            args["have"] = tactic.branch
-            if tactic.binder_name:
-                args["binderName"] = tactic.binder_name
-        elif isinstance(tactic, TacticLet):
-            args["let"] = tactic.branch
-            if tactic.binder_name:
-                args["binderName"] = tactic.binder_name
-        elif isinstance(tactic, TacticExpr):
-            args["expr"] = tactic.expr
-        elif isinstance(tactic, TacticDraft):
-            args["draft"] = tactic.expr
-        elif isinstance(tactic, TacticMode):
-            args["mode"] = tactic.serial()
-        else:
-            raise RuntimeError(f"Invalid tactic type: {tactic}")
+        match tactic:
+            case str():
+                args["tactic"] = tactic
+            case TacticHave():
+                args["have"] = tactic.branch
+                if tactic.binder_name:
+                    args["binderName"] = tactic.binder_name
+            case TacticLet():
+                args["let"] = tactic.branch
+                if tactic.binder_name:
+                    args["binderName"] = tactic.binder_name
+            case TacticExpr():
+                args["expr"] = tactic.expr
+            case TacticDraft():
+                args["draft"] = tactic.expr
+            case TacticMode():
+                args["mode"] = tactic.serial()
+            case _:
+                raise RuntimeError(f"Invalid tactic type: {type(tactic)}")
         result = await self.run_async('goal.tactic', args)
-        nextStateId = result.get("nextStateId")
+        next_state_id = result.get("nextStateId")
         if "error" in result:
             raise ServerError(result)
         if "parseError" in result:
@@ -283,10 +298,10 @@ class Server:
             raise TacticFailure([Message.parse(m) for m in messages])
 
         if result["hasSorry"]:
-            await self.run_async('goal.delete', {'stateIds': [nextStateId]})
+            await self.run_async('goal.delete', {'stateIds': [next_state_id]})
             raise TacticFailure("Tactic generated sorry", messages)
         if result["hasUnsafe"]:
-            await self.run_async('goal.delete', {'stateIds': [nextStateId]})
+            await self.run_async('goal.delete', {'stateIds': [next_state_id]})
             raise TacticFailure("Tactic generated unsafe", messages)
 
         return GoalState.parse(result, messages, self.to_remove_goal_states)
@@ -307,7 +322,8 @@ class Server:
             raise ServerError(result)
         if "parseError" in result:
             raise ServerError(result)
-        return GoalState.parse(result, self.to_remove_goal_states)
+        return GoalState.parse(result, [], self.to_remove_goal_states)
+
     goal_continue = to_sync(goal_continue_async)
 
     async def goal_resume_async(self, state: GoalState, goals: list[Goal]) -> GoalState:
@@ -324,10 +340,12 @@ class Server:
             raise ServerError(result)
         if "parseError" in result:
             raise ServerError(result)
-        return GoalState.parse(result, self.to_remove_goal_states)
+        return GoalState.parse(result, [], self.to_remove_goal_states)
     goal_resume = to_sync(goal_resume_async)
 
-    async def env_add_async(self, name: str, levels: list[str], t: Expr, v: Expr, is_theorem: bool = True):
+    async def env_add_async(
+            self, name: str, levels: list[str],
+            t: Expr, v: Expr, is_theorem: bool = True):
         """
         Adds a definition to the environment.
 
@@ -379,9 +397,13 @@ class Server:
         return result
     env_module_read = to_sync(env_module_read_async)
 
-    async def env_parse_async(self, input: str, category: str="tactic") -> Tuple[str, str]:
+    async def env_parse_async(self, src: str, category: str = "tactic") -> Tuple[str, str]:
+        """
+        Parse an input using a syntax category's parser. Returns the parsed
+        component and the tail.
+        """
         result = await self.run_async('env.parse', {
-            "input": input,
+            "input": src,
             "category": category,
         })
         if "error" in result:
@@ -389,7 +411,7 @@ class Server:
                 raise ParseError(result["desc"])
             raise ServerError(result["desc"])
         pos = result["pos"]
-        s = input.encode()
+        s = src.encode()
         return s[:pos].decode(), s[pos:].decode()
 
     env_parse = to_sync(env_parse_async)
@@ -448,7 +470,11 @@ class Server:
         })
         if "error" in result:
             raise ServerError(result["desc"])
-        return GoalState.parse_inner(state_id, result['goals'], [], self.to_remove_goal_states)
+        return GoalState.parse_inner(
+            state_id,
+            result['goals'], [],
+            self.to_remove_goal_states,
+        )
 
     goal_load = to_sync(goal_load_async)
 
@@ -520,8 +546,8 @@ class Server:
     async def check_compile_async(
             self,
             code: str,
-            new_constants: bool=False,
-            read_header: bool=False):
+            new_constants: bool = False,
+            read_header: bool = False):
         """
         Check if some Lean code compiles
         """
@@ -546,12 +572,12 @@ class Server:
     async def load_sorry_async(
             self,
             src: str,
-            binder_name: Optional[str]=None,
-            ignore_values: bool=True) -> list[SearchTarget]:
+            binder_name: Optional[str] = None,
+            ignore_values: bool = True) -> list[SearchTarget]:
         """
         Condense search target into goals
         """
-        args = { "file": src, "ignoreValues": ignore_values }
+        args = {"file": src, "ignoreValues": ignore_values}
         if binder_name is not None:
             args["binderName"] = binder_name
         result = await self.run_async('frontend.distil', args)
@@ -569,7 +595,7 @@ class Server:
         """
         Checks if `dst` file conforms to the specifications in `src`
         """
-        result = await self.run_async('frontend.track', { "src": src, "dst": dst })
+        result = await self.run_async('frontend.track', {"src": src, "dst": dst})
         if "error" in result:
             raise ServerError(result)
         src_messages = [Message.parse(d) for d in result["srcMessages"]]
@@ -627,13 +653,13 @@ class TestServer(unittest.TestCase):
         with warnings.catch_warnings():
             warnings.simplefilter("error", ResourceWarning)
             server = Server()
-            t = server.expr_type("forall (n m: Nat), n + m = m + n")
+            server.expr_type("forall (n m: Nat), n + m = m + n")
             del server
             server = Server()
-            t = server.expr_type("forall (n m: Nat), n + m = m + n")
+            server.expr_type("forall (n m: Nat), n + m = m + n")
             del server
             server = Server()
-            t = server.expr_type("forall (n m: Nat), n + m = m + n")
+            server.expr_type("forall (n m: Nat), n + m = m + n")
             del server
 
     def test_expr_type(self):
