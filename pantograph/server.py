@@ -953,6 +953,27 @@ class TestServer(unittest.TestCase):
         state2 = server.goal_tactic(state1, tactic="exact h")
         self.assertTrue(state2.is_solved)
 
+    def test_distil_coupled(self):
+        server = Server()
+        code = """
+        def f : Nat -> Nat := sorry
+        theorem property (n : Nat) : f n = n := sorry"""
+        unit, = server.load_sorry(code, ignore_values=False)
+        state0 = unit.goal_state
+        self.assertEqual(state0.goals, [
+            Goal(
+                "_uniq.7",
+                [],
+                name='f',
+                target="Nat → Nat",
+            ),
+            Goal(
+                "_uniq.10",
+                [Variable(name='n', t='Nat')],
+                target="?f n = n",
+            ),
+        ])
+
     def test_check_track(self):
         server = Server()
         src = "def f : Nat -> Nat := sorry"

@@ -87,14 +87,14 @@ class Goal:
                 continue
             deps = [sibling_map[d] for d in dependents if d in sibling_map]
             if sibling_dep:
-                sibling_dep = { *sibling_dep, *deps }
+                sibling_dep = {*sibling_dep, *deps}
             else:
-                sibling_dep = { *deps }
+                sibling_dep = {*deps}
 
         return Goal(id, variables, target, sibling_dep, name, mode)
 
     def __str__(self):
-        head = f"{self.name}\n" if self.name else ""
+        head = f"case {self.name}\n" if self.name else ""
         front = "|" if self.mode == TacticMode.CONV else "⊢"
         return head +\
             "\n".join(str(v) for v in self.variables) +\
