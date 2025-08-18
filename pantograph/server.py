@@ -487,11 +487,9 @@ class Server:
             result = await self.run_async('frontend.process', {
                 'fileName': str(file_name),
                 'invocations': invocation_file_name,
-                "sorrys": False,
                 "readHeader": True,
                 "inheritEnv": False,
                 "newConstants": False,
-                "typeErrorsAsGoals": False,
             })
             if "error" in result:
                 raise ServerError(result)
@@ -513,11 +511,9 @@ class Server:
         """
         result = await self.run_async('frontend.process', {
             'file': header,
-            "sorrys": False,
             "newConstants": False,
             "readHeader": True,
             "inheritEnv": True,
-            "typeErrorsAsGoals": False,
         })
         if "error" in result:
             raise ServerError(result)
@@ -532,11 +528,9 @@ class Server:
         """
         result = await self.run_async('frontend.process', {
             'file': snippet,
-            "sorrys": False,
             "newConstants": False,
             "readHeader": False,
             "inheritEnv": True,
-            "typeErrorsAsGoals": False,
         })
         if "error" in result:
             raise ServerError(result)
@@ -553,11 +547,9 @@ class Server:
         """
         result = await self.run_async('frontend.process', {
             'file': code,
-            "sorrys": False,
             "newConstants": new_constants,
             "readHeader": read_header,
             "inheritEnv": False,
-            "typeErrorsAsGoals": False,
         })
         if "error" in result:
             raise ServerError(result)
