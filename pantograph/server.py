@@ -755,12 +755,12 @@ class TestServer(unittest.TestCase):
         state1 = server.goal_tactic(state0, tactic=TacticHave(branch="2 = 1 + 1", binder_name="h"))
         self.assertEqual(state1.goals, [
             Goal(
-                "_uniq.257",
+                "_uniq.255",
                 variables=[],
                 target="2 = 1 + 1",
             ),
             Goal(
-                "_uniq.259",
+                "_uniq.257",
                 variables=[Variable(name="h", t="2 = 1 + 1")],
                 target="1 + 1 = 2",
             ),
@@ -772,13 +772,13 @@ class TestServer(unittest.TestCase):
             state0, tactic=TacticLet(branch="2 = 1 + 1", binder_name="h"))
         self.assertEqual(state1.goals, [
             Goal(
-                "_uniq.257",
+                "_uniq.255",
                 variables=[],
                 name="h",
                 target="2 = 1 + 1",
             ),
             Goal(
-                "_uniq.259",
+                "_uniq.257",
                 variables=[Variable(name="h", t="2 = 1 + 1", v="?h")],
                 target="1 + 1 = 2",
             ),
@@ -798,7 +798,7 @@ class TestServer(unittest.TestCase):
         state2 = server.goal_tactic(state1b, "1 + a + 1 = a + 1 + 1")
         self.assertEqual(state2.goals, [
             Goal(
-                "_uniq.381",
+                "_uniq.372",
                 variables,
                 target="1 + a + 1 = a + 1 + 1",
                 name='calc',
@@ -916,7 +916,7 @@ class TestServer(unittest.TestCase):
         state1b = server.goal_tactic(state0, tactic=TacticDraft("by\nhave h1 : Or p p := sorry\nsorry"))
         self.assertEqual(state1b.goals, [
             Goal(
-                "_uniq.16",
+                "_uniq.17",
                 [Variable(name="p", t="Prop")],
                 target="p ∨ p",
             ),
