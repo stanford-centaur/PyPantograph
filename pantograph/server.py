@@ -478,7 +478,7 @@ class Server:
 
     goal_load = to_sync(goal_load_async)
 
-    async def tactic_invocations_async(self, file_name: Union[str, Path]) -> List[CompilationUnit]:
+    async def tactic_invocations_async(self, file_name: Union[str, Path]) -> list[CompilationUnit]:
         """
         Collect tactic invocation points in file, and return them.
         """
@@ -638,7 +638,7 @@ class TestServer(unittest.TestCase):
         """
         NOTE: Update this after upstream updates.
         """
-        self.assertEqual(get_version(), "0.3.6")
+        self.assertEqual(get_version(), "0.3.7")
 
     def test_server_init_del(self):
         import warnings
