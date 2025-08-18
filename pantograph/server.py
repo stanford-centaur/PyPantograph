@@ -804,7 +804,7 @@ class TestServer(unittest.TestCase):
                 name='calc',
             ),
             Goal(
-                "_uniq.400",
+                "_uniq.391",
                 variables,
                 target="a + 1 + 1 = a + b",
                 mode=TacticMode.CALC,
@@ -921,7 +921,7 @@ class TestServer(unittest.TestCase):
                 target="p ∨ p",
             ),
             Goal(
-                "_uniq.18",
+                "_uniq.19",
                 [
                     Variable(name="p", t="Prop"),
                     Variable(name="h1", t="p ∨ p"),
