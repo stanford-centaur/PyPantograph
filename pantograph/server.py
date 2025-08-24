@@ -924,7 +924,7 @@ class TestServer(unittest.TestCase):
                 "_uniq.19",
                 [
                     Variable(name="p", t="Prop"),
-                    Variable(name="h1", t="p ∨ p"),
+                    Variable(name="h1", t="p ∨ p", v="?m.17"),
                 ],
                 target="p → p",
             ),
