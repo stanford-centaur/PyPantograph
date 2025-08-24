@@ -478,7 +478,7 @@ class Server:
 
     goal_load = to_sync(goal_load_async)
 
-    async def tactic_invocations_async(self, file_name: Union[str, Path]) -> List[CompilationUnit]:
+    async def tactic_invocations_async(self, file_name: Union[str, Path]) -> list[CompilationUnit]:
         """
         Collect tactic invocation points in file, and return them.
         """
@@ -638,7 +638,7 @@ class TestServer(unittest.TestCase):
         """
         NOTE: Update this after upstream updates.
         """
-        self.assertEqual(get_version(), "0.3.6")
+        self.assertEqual(get_version(), "0.3.7")
 
     def test_server_init_del(self):
         import warnings
@@ -755,12 +755,12 @@ class TestServer(unittest.TestCase):
         state1 = server.goal_tactic(state0, tactic=TacticHave(branch="2 = 1 + 1", binder_name="h"))
         self.assertEqual(state1.goals, [
             Goal(
-                "_uniq.257",
+                "_uniq.255",
                 variables=[],
                 target="2 = 1 + 1",
             ),
             Goal(
-                "_uniq.259",
+                "_uniq.257",
                 variables=[Variable(name="h", t="2 = 1 + 1")],
                 target="1 + 1 = 2",
             ),
@@ -772,13 +772,13 @@ class TestServer(unittest.TestCase):
             state0, tactic=TacticLet(branch="2 = 1 + 1", binder_name="h"))
         self.assertEqual(state1.goals, [
             Goal(
-                "_uniq.257",
+                "_uniq.255",
                 variables=[],
                 name="h",
                 target="2 = 1 + 1",
             ),
             Goal(
-                "_uniq.259",
+                "_uniq.257",
                 variables=[Variable(name="h", t="2 = 1 + 1", v="?h")],
                 target="1 + 1 = 2",
             ),
@@ -798,13 +798,13 @@ class TestServer(unittest.TestCase):
         state2 = server.goal_tactic(state1b, "1 + a + 1 = a + 1 + 1")
         self.assertEqual(state2.goals, [
             Goal(
-                "_uniq.381",
+                "_uniq.372",
                 variables,
                 target="1 + a + 1 = a + 1 + 1",
                 name='calc',
             ),
             Goal(
-                "_uniq.400",
+                "_uniq.391",
                 variables,
                 target="a + 1 + 1 = a + b",
                 mode=TacticMode.CALC,
@@ -916,15 +916,15 @@ class TestServer(unittest.TestCase):
         state1b = server.goal_tactic(state0, tactic=TacticDraft("by\nhave h1 : Or p p := sorry\nsorry"))
         self.assertEqual(state1b.goals, [
             Goal(
-                "_uniq.16",
+                "_uniq.17",
                 [Variable(name="p", t="Prop")],
                 target="p ∨ p",
             ),
             Goal(
-                "_uniq.18",
+                "_uniq.19",
                 [
                     Variable(name="p", t="Prop"),
-                    Variable(name="h1", t="p ∨ p"),
+                    Variable(name="h1", t="p ∨ p", v="?m.17"),
                 ],
                 target="p → p",
             ),
