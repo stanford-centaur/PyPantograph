@@ -20,6 +20,7 @@ from pantograph.expr import (
     Variable,
     Goal,
     GoalState,
+    Subsumption,
     Site,
     Tactic,
     TacticHave,
@@ -342,6 +343,30 @@ class Server:
             raise ServerError(result)
         return GoalState.parse(result, [], self.to_remove_goal_states)
     goal_resume = to_sync(goal_resume_async)
+
+    async def goal_subsume_async(self, state: GoalState, goal: Goal, srcs: list[Goal]) -> (Optional[GoalState], Subsumption):
+        """
+        [Experimental] Detect subsumption
+        """
+        result = await self.run_async('goal.subsume', {
+            "stateId": state.state_id,
+            "goal": goal.id,
+            "srcs": [g.id for g in srcs],
+        })
+        if "error" in result:
+            raise ServerError(result)
+        nextState = None
+        if state_id := result.get("stateId"):
+            nextState = GoalState(
+                state_id=state_id,
+                goals=[g for g in state.goals if g.id != goal.id],
+                messages=[],
+                _sentinel=self.to_remove_goal_states,
+            )
+        sub = Subsumption[result["result"].upper()]
+        return (nextState, sub)
+
+    goal_subsume = to_sync(goal_subsume_async)
 
     async def env_add_async(
             self, name: str, levels: list[str],
@@ -828,6 +853,16 @@ class TestServer(unittest.TestCase):
         state = server.goal_tactic(state, "apply Exists.intro")
         self.assertEqual(state.goals[0].sibling_dep, {1})
         self.assertEqual(state.goals[1].sibling_dep, set())
+
+    def test_subsume(self):
+        server = Server()
+        state0 = server.goal_start("forall (p : Prop), p -> p")
+        state1 = server.goal_tactic(state0, "intro p")
+        state2 = server.goal_tactic(state1, "intro h")
+        state3 = server.goal_tactic(state2, "revert h")
+        (state, sub) = server.goal_subsume(state3, state3.goals[0], [state1.goals[0], state2.goals[0]])
+        self.assertEqual(sub, Subsumption.CYCLE)
+        self.assertEqual(state, None)
 
     def test_env_add_inspect(self):
         server = Server()
