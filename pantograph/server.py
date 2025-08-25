@@ -344,15 +344,23 @@ class Server:
         return GoalState.parse(result, [], self.to_remove_goal_states)
     goal_resume = to_sync(goal_resume_async)
 
-    async def goal_subsume_async(self, state: GoalState, goal: Goal, srcs: list[Goal]) -> (Optional[GoalState], Subsumption):
+    async def goal_subsume_async(
+            self,
+            state: GoalState,
+            goal: Goal, srcs: list[Goal],
+            src_state: Optional[GoalState]=None
+    ) -> (Optional[GoalState], Subsumption):
         """
         [Experimental] Detect subsumption
         """
-        result = await self.run_async('goal.subsume', {
+        args = {
             "stateId": state.state_id,
             "goal": goal.id,
             "srcs": [g.id for g in srcs],
-        })
+        }
+        if src_state:
+            args["srcStateId"] = src_state.state_id
+        result = await self.run_async('goal.subsume', args)
         if "error" in result:
             raise ServerError(result)
         nextState = None
