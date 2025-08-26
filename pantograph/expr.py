@@ -163,7 +163,7 @@ class Subsumption(Enum):
     Subsumption result
     """
     NONE = 1
-    SUBSUME = 2
+    SUBSUMED = 2
     CYCLE = 3
 
 @dataclass(frozen=True)
