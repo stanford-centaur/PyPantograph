@@ -352,7 +352,12 @@ class Server:
             src_state: Optional[GoalState]=None
     ) -> (Subsumption, Optional[GoalState], Optional[Goal]):
         """
-        [Experimental] Detect subsumption by some goals
+        Detect subsumption by candidate goals
+
+        The candidate goals must all exist in `src_state`. If `src_state` is not
+        provided, they must exist in `state`. Returns a new goal state if a
+        subsumption does not lead to a cycle, and the subsumptor if there is any
+        subsumption happening.
         """
         args = {
             "stateId": state.state_id,
