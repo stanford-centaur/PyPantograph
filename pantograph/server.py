@@ -347,7 +347,8 @@ class Server:
     async def goal_subsume_async(
             self,
             state: GoalState,
-            goal: Goal, srcs: list[Goal],
+            goal: Goal,
+            candidates: list[Goal],
             src_state: Optional[GoalState]=None
     ) -> (Subsumption, Optional[GoalState], Optional[Goal]):
         """
@@ -356,7 +357,7 @@ class Server:
         args = {
             "stateId": state.state_id,
             "goal": goal.id,
-            "srcs": [g.id for g in srcs],
+            "candidates": [g.id for g in candidates],
         }
         if src_state:
             args["srcStateId"] = src_state.state_id
@@ -374,7 +375,7 @@ class Server:
         sub = Subsumption[result["result"].upper()]
         subsumptor = None
         if subsumptor := result.get("subsumptor"):
-            gen = (g for g in srcs if g.id == subsumptor)
+            gen = (g for g in candidates if g.id == subsumptor)
             subsumptor = next(gen)
             if subsumptor is None:
                 raise ServerError("Subsumptor should not be none")
@@ -875,7 +876,11 @@ class TestServer(unittest.TestCase):
         state2 = server.goal_tactic(state1, "intro h")
         state3 = server.goal_tactic(state2, "revert h")
         src = state1.goals[0]
-        (sub, state, subsumptor) = server.goal_subsume(state3, state3.goals[0], [state1.goals[0], state2.goals[0]])
+        (sub, state, subsumptor) = server.goal_subsume(
+            state3,
+            state3.goals[0],
+            [state1.goals[0], state2.goals[0]],
+        )
         self.assertEqual(sub, Subsumption.CYCLE)
         self.assertEqual(state, None)
         self.assertEqual(subsumptor, src)
