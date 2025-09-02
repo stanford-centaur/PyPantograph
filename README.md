@@ -40,11 +40,19 @@ cd doc/_build/html
 python3 -m http.server -d .
 ```
 
-## Examples
+### Examples
 
 For API interaction examples, see `examples/README.md`.
 
-## Referencing
+### Contributing
+
+Execute unit tests with
+
+```sh
+uv run pytest
+```
+
+## Reference
 
 [Paper Link](https://arxiv.org/abs/2410.16429)
 
