@@ -33,14 +33,14 @@ jobs:
       run: |
         elan toolchain install $(<src/lean-toolchain)
 
-    - name: Install poetry
+    - name: Install uv
       run: |
-        pip install poetry
-        poetry install --only doc
+        curl -LsSf https://astral.sh/uv/install.sh | sh
+        uv sync
 
     - name: Build documentations
       run: |
-        poetry run jupyter-book build doc
+        uv run --group dev jupyter-book build doc
 
     # Upload the book's HTML as an artifact
     - name: Upload artifact
