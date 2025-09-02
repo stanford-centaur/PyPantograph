@@ -35,12 +35,12 @@ jobs:
 
     - name: Install uv
       run: |
-        sudo apt-get install -y uv
+        curl -LsSf https://astral.sh/uv/install.sh | sh
         uv sync
 
     - name: Build documentations
       run: |
-        uv run --group doc jupyter-book build doc
+        uv run --group dev jupyter-book build doc
 
     # Upload the book's HTML as an artifact
     - name: Upload artifact

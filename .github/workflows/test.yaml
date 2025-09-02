@@ -30,7 +30,7 @@ jobs:
 
     - name: Install uv
       run: |
-        sudo apt-get install -y uv
+        curl -LsSf https://astral.sh/uv/install.sh | sh
         uv sync
 
     - name: Run tests
