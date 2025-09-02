@@ -11,8 +11,9 @@ authors = [
 requires-python = ">=3.11.0"
 dependencies = []
 [dependency-groups]
-doc = [
-    "notebook"
+dev = [
+    "notebook",
+    "pytest>=8.4.1",
 ]
 
 [build-system]

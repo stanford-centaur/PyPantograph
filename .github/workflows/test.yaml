@@ -35,5 +35,4 @@ jobs:
 
     - name: Run tests
       run: |
-        uv run python3 -m pantograph.server
-        uv run python3 -m pantograph.search
+        uv run pytest
