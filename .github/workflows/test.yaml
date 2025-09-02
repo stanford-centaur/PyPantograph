@@ -30,7 +30,7 @@ jobs:
 
     - name: Install uv
       run: |
-        apt-get install uv
+        sudo apt-get install -y uv
         uv sync
 
     - name: Run tests
