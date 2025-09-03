@@ -239,7 +239,7 @@ class Server:
             raise ServerError(result)
         return GoalState(
             state_id=result["stateId"],
-            goals=[Goal.sentence(expr)],
+            goals=[Goal.sentence(result["root"], expr)],
             messages=[],
             _sentinel=self.to_remove_goal_states,
         )
