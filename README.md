@@ -32,12 +32,11 @@ uv build
 
 Build the documentations by
 ```sh
-uvx --with notebook jupyter-book build doc
+uv run --group dev jupyter-book build doc
 ```
 Then serve
 ```sh
-cd doc/_build/html
-python3 -m http.server -d .
+python3 -m http.server -d doc/_build/html
 ```
 
 ### Examples
