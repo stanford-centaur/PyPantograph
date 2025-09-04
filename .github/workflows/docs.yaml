@@ -40,7 +40,7 @@ jobs:
 
     - name: Build documentations
       run: |
-        uvx --with notebook jupyter-book build doc
+        uv run --group dev jupyter-book build doc
 
     # Upload the book's HTML as an artifact
     - name: Upload artifact
