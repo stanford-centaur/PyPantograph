@@ -564,7 +564,7 @@ class Server:
             self,
             src: str,
             binder_name: Optional[str] = None,
-            ignore_values: bool = True) -> list[SearchTarget]:
+            ignore_values: bool = False) -> list[SearchTarget]:
         """
         Condense search target into goals
         """

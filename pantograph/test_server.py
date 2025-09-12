@@ -268,7 +268,7 @@ class TestServer(unittest.TestCase):
 
     def test_load_sorry(self):
         server = Server()
-        unit, = server.load_sorry("theorem mystery (p: Prop) : p → p := sorry", ignore_values=False)
+        unit, = server.load_sorry("theorem mystery (p: Prop) : p → p := sorry")
         #self.assertIsNotNone(unit.goal_state, f"{unit.messages}")
         state0 = unit.goal_state
         self.assertEqual(state0.goals, [
@@ -301,7 +301,7 @@ class TestServer(unittest.TestCase):
 
     def test_distil_search_target(self):
         server = Server()
-        unit, = server.load_sorry("theorem mystery (p: Prop) : p → p := sorry")
+        unit, = server.load_sorry("theorem mystery (p: Prop) : p → p := sorry", ignore_values = True)
         state0 = unit.goal_state
         self.assertEqual(state0.goals, [
             Goal(
