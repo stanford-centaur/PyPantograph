@@ -64,11 +64,11 @@ class Goal:
     mode: TacticMode = TacticMode.TACTIC
 
     @staticmethod
-    def sentence(target: Expr):
+    def sentence(id: str, target: Expr):
         """
         :meta public:
         """
-        return Goal(id=None, variables=[], target=target)
+        return Goal(id=id, variables=[], target=target)
 
     @staticmethod
     def parse(payload: dict, sibling_map: dict[str, int]):
@@ -157,6 +157,14 @@ class Site:
         if self.auto_resume is not None:
             result["autoResume"] = self.auto_resume
         return result
+
+class Subsumption(Enum):
+    """
+    Subsumption result
+    """
+    NONE = 1
+    SUBSUMED = 2
+    CYCLE = 3
 
 @dataclass(frozen=True)
 class TacticHave:
