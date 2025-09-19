@@ -17,6 +17,7 @@ from .expr import (
     Goal,
     GoalState,
     Site,
+    Subsumption,
     Tactic,
     TacticHave,
     TacticLet,
@@ -341,6 +342,50 @@ class Server:
             raise ServerError(result)
         return GoalState.parse(result, [], self.to_remove_goal_states)
     goal_resume = to_sync(goal_resume_async)
+
+    async def goal_subsume_async(
+            self,
+            state: GoalState,
+            goal: Goal,
+            candidates: list[Goal],
+            src_state: Optional[GoalState]=None
+    ) -> (Subsumption, Optional[GoalState], Optional[Goal]):
+        """
+        Detect subsumption by candidate goals
+
+        The candidate goals must all exist in `src_state`. If `src_state` is not
+        provided, they must exist in `state`. Returns a new goal state if a
+        subsumption does not lead to a cycle, and the subsumptor if there is any
+        subsumption happening.
+        """
+        args = {
+            "stateId": state.state_id,
+            "goal": goal.id,
+            "candidates": [g.id for g in candidates],
+        }
+        if src_state:
+            args["srcStateId"] = src_state.state_id
+        result = await self.run_async('goal.subsume', args)
+        if "error" in result:
+            raise ServerError(result)
+        nextState = None
+        if state_id := result.get("stateId"):
+            nextState = GoalState(
+                state_id=state_id,
+                goals=[g for g in state.goals if g.id != goal.id],
+                messages=[],
+                _sentinel=self.to_remove_goal_states,
+            )
+        sub = Subsumption[result["result"].upper()]
+        subsumptor = None
+        if subsumptor := result.get("subsumptor"):
+            gen = (g for g in candidates if g.id == subsumptor)
+            subsumptor = next(gen)
+            if subsumptor is None:
+                raise ServerError("Subsumptor should not be none")
+        return (sub, nextState, subsumptor)
+
+    goal_subsume = to_sync(goal_subsume_async)
 
     async def env_add_async(
             self, name: str, levels: list[str],

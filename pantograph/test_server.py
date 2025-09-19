@@ -198,6 +198,22 @@ class TestServer(unittest.TestCase):
         self.assertEqual(state.goals[0].sibling_dep, {1})
         self.assertEqual(state.goals[1].sibling_dep, set())
 
+    def test_subsume(self):
+        server = Server()
+        state0 = server.goal_start("forall (p : Prop), p -> p")
+        state1 = server.goal_tactic(state0, "intro p")
+        state2 = server.goal_tactic(state1, "intro h")
+        state3 = server.goal_tactic(state2, "revert h")
+        src = state1.goals[0]
+        (sub, state, subsumptor) = server.goal_subsume(
+            state3,
+            state3.goals[0],
+            [state1.goals[0], state2.goals[0]],
+        )
+        self.assertEqual(sub, Subsumption.CYCLE)
+        self.assertEqual(state, None)
+        self.assertEqual(subsumptor, src)
+
     def test_env_add_inspect(self):
         server = Server()
         server.env_add(

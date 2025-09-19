@@ -158,6 +158,14 @@ class Site:
             result["autoResume"] = self.auto_resume
         return result
 
+class Subsumption(Enum):
+    """
+    Subsumption result
+    """
+    NONE = 1
+    SUBSUMED = 2
+    CYCLE = 3
+
 @dataclass(frozen=True)
 class TacticHave:
     """
