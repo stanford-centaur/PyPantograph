@@ -29,7 +29,12 @@ server = Server()
 
 The server created from `Server()` is sufficient for basic theorem proving tasks
 reliant on Lean's `Init` library. Some users may find this insufficient and want
-to use non-builtin libraries such as Aesop or Mathlib4.
+to use non-builtin libraries such as Aesop or Mathlib4. In this case, feed in a
+list of module names via the `imports` parameter e.g. `imports=["Mathlib"]`. Due
+to inherent restrictions in Lean, importing a module that has not been imported
+before after the server has already started is not allowed and will trigger
+initializer exceptions. It may be possible to circumvent this if Lean relaxes
+this constraint.
 
 To use external Lean dependencies such as
 [Mathlib4](https://github.com/leanprover-community/mathlib4), Pantograph relies
