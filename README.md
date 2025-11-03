@@ -1,6 +1,15 @@
 # PyPantograph
 
+[![arXiv](https://img.shields.io/badge/cs.LO-2410.16429-b31b1b?logo=arxiv&logoColor=red)](https://arxiv.org/abs/2410.16429)
+
 A Machine-to-Machine Interaction System for Lean 4.
+
+Features:
+- Programmatically execute tactics (`goal_tactic`)
+- Handling of metavariable coupling
+- Whole file specification conformity check (`check_track`)
+- Extraction of tactic invocation data
+- Inspection of Lean constants
 
 ## Installation
 
