@@ -465,7 +465,7 @@ class Server:
         Save the current environment to a file
         """
         result = await self.run_async('env.save', {
-            "path": path,
+            "path": os.path.abspath(path),
         })
         if "error" in result:
             raise ServerError(result["desc"])
@@ -476,7 +476,7 @@ class Server:
         Load the current environment from a file
         """
         result = await self.run_async('env.load', {
-            "path": path,
+            "path": os.path.abspath(path),
         })
         if "error" in result:
             raise ServerError(result["desc"])
@@ -489,7 +489,7 @@ class Server:
         """
         result = await self.run_async('goal.save', {
             "id": goal_state.state_id,
-            "path": path,
+            "path": os.path.abspath(path),
         })
         if "error" in result:
             raise ServerError(result["desc"])
@@ -503,7 +503,7 @@ class Server:
         User is responsible for keeping track of the environment.
         """
         result = await self.run_async('goal.load', {
-            "path": path,
+            "path": os.path.abspath(path),
         })
         if "error" in result:
             raise ServerError(result["desc"])
