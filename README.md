@@ -1,5 +1,7 @@
 # PyPantograph
 
+[![arXiv](https://img.shields.io/badge/cs.LO-2410.16429-b31b1b?logo=arxiv&logoColor=red)](https://arxiv.org/abs/2410.16429)
+
 A Machine-to-Machine Interaction System for Lean 4.
 
 ## Installation
