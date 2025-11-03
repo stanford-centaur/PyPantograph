@@ -4,6 +4,13 @@
 
 A Machine-to-Machine Interaction System for Lean 4.
 
+Features:
+- Programmatically execute tactics (`goal_tactic`)
+- Handling of metavariable coupling
+- Whole file specification conformity check (`check_track`)
+- Extraction of tactic invocation data
+- Inspection of Lean constants
+
 ## Installation
 
 1. Install `uv`
