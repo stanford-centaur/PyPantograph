@@ -7,7 +7,7 @@ class TestServer(unittest.TestCase):
         """
         NOTE: Update this after upstream updates.
         """
-        self.assertEqual(get_version(), "0.3.8")
+        self.assertEqual(get_version(), "0.3.9")
 
     def test_server_init_del(self):
         import warnings
@@ -124,12 +124,12 @@ class TestServer(unittest.TestCase):
         state1 = server.goal_tactic(state0, tactic=TacticHave(branch="2 = 1 + 1", binder_name="h"))
         self.assertEqual(state1.goals, [
             Goal(
-                "_uniq.255",
+                "_uniq.256",
                 variables=[],
                 target="2 = 1 + 1",
             ),
             Goal(
-                "_uniq.257",
+                "_uniq.258",
                 variables=[Variable(name="h", t="2 = 1 + 1")],
                 target="1 + 1 = 2",
             ),
@@ -141,13 +141,13 @@ class TestServer(unittest.TestCase):
             state0, tactic=TacticLet(branch="2 = 1 + 1", binder_name="h"))
         self.assertEqual(state1.goals, [
             Goal(
-                "_uniq.255",
+                "_uniq.256",
                 variables=[],
                 name="h",
                 target="2 = 1 + 1",
             ),
             Goal(
-                "_uniq.257",
+                "_uniq.258",
                 variables=[Variable(name="h", t="2 = 1 + 1", v="?h")],
                 target="1 + 1 = 2",
             ),
@@ -309,7 +309,7 @@ class TestServer(unittest.TestCase):
                 "_uniq.21",
                 [
                     Variable(name="p", t="Prop"),
-                    Variable(name="h1", t="p ∨ p", v="?m.19"),
+                    Variable(name="h1", t="p ∨ p", v="?m.7"),
                 ],
                 target="p → p",
             ),
