@@ -226,6 +226,15 @@ class TestServer(unittest.TestCase):
         inspect_result = server.env_inspect(name="mystery")
         self.assertEqual(inspect_result['type'], {'pp': 'Nat → Nat'})
 
+    def test_env_catalog(self):
+        server = Server()
+        server.load_definitions("def foo: Nat -> Nat | 0 => 1 | n + 1 => foo n")
+        definitions = server.env_catalog(module_prefix="Init", invert_filter=True)
+        self.assertEqual(
+            set(definitions),
+            {'dfoo._sunfold', 'dfoo._unsafe_rec', 'dfoo', 'dfoo.match_1'}
+        )
+
     def test_env_parse(self):
         server = Server()
         head, tail = server.env_parse("intro x; apply a", category="tactic")

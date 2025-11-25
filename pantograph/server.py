@@ -409,6 +409,25 @@ class Server:
 
     env_add = to_sync(env_add_async)
 
+    async def env_catalog_async(
+            self,
+            module_prefix: str | None = None,
+            invert_filter: bool = False
+    ) -> list[str]:
+        """
+        Print all symbols in environment.
+        """
+        with tempfile.NamedTemporaryFile('r') as tmp_file:
+            result = await self.run_async('env.catalog', {
+                'filename': tmp_file.name,
+                'modulePrefix': module_prefix,
+                'invertFilter': invert_filter,
+            })
+            if "error" in result:
+                raise ServerError(result["desc"])
+            return [line.strip() for line in tmp_file.readlines()]
+    env_catalog = to_sync(env_catalog_async)
+
     async def env_inspect_async(
             self,
             name: str,
