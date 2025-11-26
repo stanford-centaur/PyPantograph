@@ -7,7 +7,7 @@ class TestServer(unittest.TestCase):
         """
         NOTE: Update this after upstream updates.
         """
-        self.assertEqual(get_version(), "0.3.9")
+        self.assertEqual(get_version(), "0.3.10")
 
     def test_server_init_del(self):
         import warnings
@@ -83,7 +83,7 @@ class TestServer(unittest.TestCase):
         state2 = server.goal_tactic(state1, tactic="cases h")
         self.assertEqual(state2.goals, [
             Goal(
-                "_uniq.61",
+                "_uniq.57",
                 variables=[
                     Variable(name="a", t="Prop"),
                     Variable(name="b", t="Prop"),
@@ -93,7 +93,7 @@ class TestServer(unittest.TestCase):
                 name="inl",
             ),
             Goal(
-                "_uniq.74",
+                "_uniq.70",
                 variables=[
                     Variable(name="a", t="Prop"),
                     Variable(name="b", t="Prop"),
@@ -107,7 +107,7 @@ class TestServer(unittest.TestCase):
         state4 = server.goal_tactic(state3, tactic="assumption")
         self.assertEqual(state4.goals, [
             Goal(
-                "_uniq.61",
+                "_uniq.57",
                 variables=[
                     Variable(name="a", t="Prop"),
                     Variable(name="b", t="Prop"),
@@ -124,12 +124,12 @@ class TestServer(unittest.TestCase):
         state1 = server.goal_tactic(state0, tactic=TacticHave(branch="2 = 1 + 1", binder_name="h"))
         self.assertEqual(state1.goals, [
             Goal(
-                "_uniq.256",
+                "_uniq.251",
                 variables=[],
                 target="2 = 1 + 1",
             ),
             Goal(
-                "_uniq.258",
+                "_uniq.253",
                 variables=[Variable(name="h", t="2 = 1 + 1")],
                 target="1 + 1 = 2",
             ),
@@ -141,13 +141,13 @@ class TestServer(unittest.TestCase):
             state0, tactic=TacticLet(branch="2 = 1 + 1", binder_name="h"))
         self.assertEqual(state1.goals, [
             Goal(
-                "_uniq.256",
+                "_uniq.251",
                 variables=[],
                 name="h",
                 target="2 = 1 + 1",
             ),
             Goal(
-                "_uniq.258",
+                "_uniq.253",
                 variables=[Variable(name="h", t="2 = 1 + 1", v="?h")],
                 target="1 + 1 = 2",
             ),
@@ -167,13 +167,13 @@ class TestServer(unittest.TestCase):
         state2 = server.goal_tactic(state1b, "1 + a + 1 = a + 1 + 1")
         self.assertEqual(state2.goals, [
             Goal(
-                "_uniq.372",
+                "_uniq.342",
                 variables,
                 target="1 + a + 1 = a + 1 + 1",
                 name='calc',
             ),
             Goal(
-                "_uniq.391",
+                "_uniq.356",
                 variables,
                 target="a + 1 + 1 = a + b",
                 mode=TacticMode.CALC,
