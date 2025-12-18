@@ -1,7 +1,7 @@
 [project]
 name = "pantograph"
 version = "0.3.11"
-description = "A machine-to-machine interaction system for Lean"
+description = "A Machine-to-Machine Interaction System for Lean"
 license = "Apache-2.0"
 readme = "README.md"
 authors = [
