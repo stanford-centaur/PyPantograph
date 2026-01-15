@@ -9,7 +9,7 @@ def get_event_loop():
         return asyncio.get_event_loop()
     except RuntimeError:
         asyncio.set_event_loop(DEFAULT_EVENT_LOOP)
-        return loop
+        return DEFAULT_EVENT_LOOP
 
 def to_sync(func):
     loop = get_event_loop()
