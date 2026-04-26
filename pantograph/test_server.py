@@ -7,7 +7,7 @@ class TestServer(unittest.TestCase):
         """
         NOTE: Update this after upstream updates.
         """
-        self.assertEqual(get_version(), "0.3.13")
+        self.assertEqual(get_version(), "0.3.14")
 
     def test_server_init_del(self):
         import warnings
