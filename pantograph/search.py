@@ -298,15 +298,14 @@ class MCTSAgent(Agent):
                 state = search_state.goal_state
                 if verbose:
                     print(f"{state.state_id}.{goal_id}: {tactic} on {search_state.goal_state.goals[goal_id]}")
-                next_goal_state = server.goal_tactic(goal_state, tactic, site=Site(goal_id, auto_resume=False))
+                next_goal_state = server.goal_tactic(state, tactic, site=Site(goal_id, auto_resume=False))
                 # Generate priorities for the next goal state
                 priorities = [0.0 for _ in next_goal_state.goals] \
                     if len(next_goal_state.goals) <= 1 else \
                     self.guidance(next_goal_state)
-                parent = -1
                 next_state = SearchState(
                     goal_state=next_goal_state,
-                    parent=parent,
+                    parent=search_state,
                     parent_goal_id=goal_id,
                     priorities=priorities
                 )
