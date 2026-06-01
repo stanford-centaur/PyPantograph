@@ -13,7 +13,7 @@ class TestSearch(unittest.TestCase):
             goal_state=goal_state,
             verbose=False)
         #flag = agent.search(server=server, target="∀ (p q: Prop), Or p q -> Or q p", verbose=True)
-        self.assertTrue(flag)
+        self.assertTrue(flag.success)
     def test_solve_big(self):
 
         server = Server()
@@ -23,7 +23,7 @@ class TestSearch(unittest.TestCase):
             server=server,
             goal_state=goal_state,
             verbose=False)
-        self.assertTrue(flag)
+        self.assertTrue(flag.success)
 
 class TestMCTSSearch(unittest.TestCase):
 
@@ -37,7 +37,7 @@ class TestMCTSSearch(unittest.TestCase):
             goal_state=goal_state,
             verbose=False)
         #flag = agent.search(server=server, target="∀ (p q: Prop), Or p q -> Or q p", verbose=True)
-        self.assertTrue(flag)
+        self.assertTrue(flag.success)
     def test_solve_big(self):
 
         server = Server()
@@ -48,7 +48,7 @@ class TestMCTSSearch(unittest.TestCase):
             goal_state=goal_state,
             max_steps=200,
             verbose=False)
-        self.assertTrue(flag)
+        self.assertTrue(flag.success)
 
 
 if __name__ == '__main__':
