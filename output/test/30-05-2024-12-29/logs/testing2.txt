@@ -1,0 +1,69 @@
+Theorem number: 2
+
+Initial state:
+⊢ forall (p q: Prop), Or p q -> Or q p
+
+---------------------------
+Iteration 1
+---------------------------
+
+Tactic candidates:
+['intros p q h']
+
+Tactic scores (-log prob):
+[0.217274595475]
+
+Tactic 1 result: not solved
+p : Prop
+q : Prop
+h : p ∨ q
+⊢ q ∨ p
+
+---------------------------
+Iteration 2
+---------------------------
+
+Tactic candidates:
+['cases h']
+
+Tactic scores (-log prob):
+[0.06462308351666667]
+
+Tactic 1 result: not solved
+p : Prop
+q : Prop
+h✝ : p
+⊢ q ∨ p
+p : Prop
+q : Prop
+h✝ : q
+⊢ q ∨ p
+
+---------------------------
+Iteration 3
+---------------------------
+
+Tactic candidates:
+['left']
+
+Tactic scores (-log prob):
+[0.602736965]
+
+Tactic 1 result: not solved
+p : Prop
+q : Prop
+h✝ : p
+⊢ q
+
+---------------------------
+Iteration 4
+---------------------------
+
+Tactic candidates:
+['exact h\\xe2\\x9c\\x9d']
+
+Tactic scores (-log prob):
+[0.00540535255116]
+
+Theorem error
+Failure reason: ServerError <pantograph>:1:11: expected end of input

@@ -1,0 +1,54 @@
+{
+    "results": [
+        {
+            "attempt_results": [
+                {
+                    "theorem": "\u2200 (a b: Nat), (b = 2) -> 1 + a + 1 = a + b",
+                    "success": false,
+                    "failure_reason": "ServerError"
+                }
+            ],
+            "success": false,
+            "example": {
+                "full_name": "testing1",
+                "statement": "\u2200 (a b: Nat), (b = 2) -> 1 + a + 1 = a + b",
+                "file_path": "None"
+            }
+        },
+        {
+            "attempt_results": [
+                {
+                    "theorem": "forall (p q: Prop), Or p q -> Or q p",
+                    "success": false,
+                    "failure_reason": "ServerError"
+                }
+            ],
+            "success": false,
+            "example": {
+                "full_name": "testing2",
+                "statement": "forall (p q: Prop), Or p q -> Or q p",
+                "file_path": "None"
+            }
+        }
+    ],
+    "args": {
+        "model_name": "gpt-3.5-turbo",
+        "dataset_name": "test-set",
+        "shard": 0,
+        "resume_from": null,
+        "dataset_path": "data/test.jsonl",
+        "output_dir": "output/test",
+        "early_stop": false,
+        "tp_degree": 1,
+        "num_shards": 8,
+        "max_iters": 5,
+        "timeout": 600,
+        "num_examples": -1,
+        "num_samples": 1,
+        "clear_process_hours": 3,
+        "temperatures": [
+            0.0
+        ],
+        "api_key_path": "../api_key/key.txt"
+    }
+}

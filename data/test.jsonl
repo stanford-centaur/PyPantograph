@@ -1,0 +1,2 @@
+{"full_name": "testing1", "statement": "∀ (a b: Nat), (b = 2) -> 1 + a + 1 = a + b", "file_path": "None"}
+{"full_name": "testing2", "statement": "forall (p q: Prop), Or p q -> Or q p", "file_path": "None"}

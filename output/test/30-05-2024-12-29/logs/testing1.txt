@@ -1,0 +1,49 @@
+Theorem number: 1
+
+Initial state:
+⊢ ∀ (a b: Nat), (b = 2) -> 1 + a + 1 = a + b
+
+---------------------------
+Iteration 1
+---------------------------
+
+Tactic candidates:
+['intros a b h']
+
+Tactic scores (-log prob):
+[0.30103418611]
+
+Tactic 1 result: not solved
+a : Nat
+b : Nat
+h : b = 2
+⊢ 1 + a + 1 = a + b
+
+---------------------------
+Iteration 2
+---------------------------
+
+Tactic candidates:
+['rw [h]']
+
+Tactic scores (-log prob):
+[0.0892465625]
+
+Tactic 1 result: not solved
+a : Nat
+b : Nat
+h : b = 2
+⊢ 1 + a + 1 = a + 2
+
+---------------------------
+Iteration 3
+---------------------------
+
+Tactic candidates:
+['rw [h]']
+
+Tactic scores (-log prob):
+[0.2368663525]
+
+Theorem error
+Failure reason: ServerError ["tactic 'rewrite' failed, did not find instance of the pattern in the target expression\n  b\na b : Nat\nh : b = 2\n⊢ 1 + a + 1 = a + 2"]
