@@ -1,12 +1,13 @@
 name: Unit Tests
-on: [push]
+on:
+  push:
+  pull_request:
 
 jobs:
   build:
     runs-on: ubuntu-latest
     permissions:
-      pages: write
-      id-token: write
+      contents: read
     steps:
     - uses: actions/checkout@v4
       with:
