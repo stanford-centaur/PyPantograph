@@ -65,9 +65,13 @@ class TacticFailure(Exception):
     """
 class ParseError(Exception):
     """
-    Indicates a logical error in the server.
+    Indicates a parsing failrue
     """
 class ServerError(Exception):
     """
     Indicates a logical error in the server.
+    """
+class ExprError(Exception):
+    """
+    Indicates an error related to expressions
     """
