@@ -147,6 +147,7 @@ class Server:
         """
         Restart the server
         """
+        self.to_remove_goal_states = []
         self._close()
         env = os.environ
         if self.lean_path:

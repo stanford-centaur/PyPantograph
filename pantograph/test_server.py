@@ -377,5 +377,19 @@ def f_composite : { f : Nat → Nat // ∀ (n : Nat), f n = n } :=
         result = server.refactor_search_target(code)
         self.assertEqual(result, target)
 
+    def test_restart(self):
+        import gc
+
+        server = Server()
+        g1 = server.goal_start("True")
+        server.restart()
+        g2 = server.goal_start("True")
+        assert server.goal_root(g2) is None
+        del g1
+        gc.collect()
+        server.gc()
+        g2b = server.goal_tactic(g2, "exact True.intro")
+        assert g2b.is_solved
+
 if __name__ == '__main__':
     unittest.main()
