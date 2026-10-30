@@ -7,6 +7,7 @@ from .message import (
     Severity,
     Message,
     TacticFailure,
+    ExprError,
     ParseError,
     ServerError,
 )
@@ -249,7 +250,9 @@ class Server:
 
     async def goal_root_async(self, state: GoalState) -> Optional[Expr]:
         """
-        Print the root expression of a goal state
+        Print the root expression of a goal state. This checks if a proof is
+        complete with all goals discharged. If the proof has `sorry`, `unsafe`,
+        or incomplete goals, it throws `ExprError`.
         """
         args = {"stateId": state.state_id, "rootExpr": True}
         result = await self.run_async('goal.print', args)
@@ -258,6 +261,12 @@ class Server:
         root = result.get('root')
         if root is None:
             return None
+        if result.get('rootHasSorry'):
+            raise ExprError("Root expression has sorry")
+        if result.get('rootHasUnsafe'):
+            raise ExprError("Root expression has unsafe")
+        if result.get('rootHasMVar'):
+            raise ExprError("Root expression has incomplete metavariables")
         return parse_expr(root)
 
     goal_root = to_sync(goal_root_async)
